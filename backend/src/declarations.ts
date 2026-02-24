@@ -25,5 +25,6 @@ export type HookContext<S = any> = FeathersHookContext<Application, S>
 declare module '@feathersjs/feathers' {
   interface Params {
     user?: User
+    koa?: any // Koa context for REST requests
   }
 }
