@@ -1,0 +1,19 @@
+{
+  "port": 8998,
+  "sqlite": {
+    "client": "sqlite3",
+    "connection": ":memory:",
+    "useNullAsDefault": true
+  },
+  "authentication": {
+    "secret": "test-secret-key-for-jwt-tokens-do-not-use-in-production",
+    "jwtOptions": {
+      "header": {
+        "typ": "access"
+      },
+      "audience": "https://test.openonmeky.com",
+      "algorithm": "HS256",
+      "expiresIn": "1h"
+    }
+  }
+}

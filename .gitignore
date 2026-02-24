@@ -1,0 +1,136 @@
+# ====================================
+# OpenOnmeky - Root .gitignore
+# ====================================
+
+# OS files
+.DS_Store
+.thumbs.db
+Thumbs.db
+
+# Editor/IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.vscode-test
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Dependencies
+node_modules/
+jspm_packages/
+web_modules/
+bower_components/
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+lib-cov/
+
+# Build outputs
+dist/
+lib/
+build/Release
+out/
+
+# Cache
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+.npm/
+.eslintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.grunt/
+.fusebox/
+.tern-port
+
+# Environment variables
+.env
+.env.local*
+.env.test
+.env.production
+
+# Package manager
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+.yarn-integrity
+*.tgz
+
+# ====================================
+# Backend specific
+# ====================================
+
+# Database files - NEVER commit these
+*.sqlite
+*.sqlite.bkp
+*.db
+*.db.bkp
+backend/db.sqlite
+backend/db.sqlite.bkp
+
+# Compiled TypeScript
+backend/lib/
+
+# Uploads (user generated content)
+backend/public/uploads/
+
+# DynamoDB Local
+.dynamodb/
+
+# Serverless
+.serverless/
+
+# ====================================
+# Frontend specific (Quasar/Vue)
+# ====================================
+
+# Quasar
+.quasar/
+frontend/dist/
+/quasar.config.*.temporary.compiled*
+
+# Cordova
+frontend/src-cordova/node_modules/
+frontend/src-cordova/platforms/
+frontend/src-cordova/plugins/
+frontend/src-cordova/www/
+
+# Capacitor
+frontend/src-capacitor/www/
+frontend/src-capacitor/node_modules/
+
+# Next.js / Nuxt.js (if used)
+.next/
+.nuxt/
+
+# Gatsby
+public/
+
+# VuePress
+.vuepress/dist/
+

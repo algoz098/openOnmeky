@@ -1,0 +1,110 @@
+{
+  "name": "@openonmeky/backend",
+  "description": "OpenOnmeky Backend - FeathersJS API",
+  "version": "0.0.1",
+  "homepage": "",
+  "private": true,
+  "keywords": [
+    "feathers"
+  ],
+  "author": {},
+  "contributors": [],
+  "bugs": {},
+  "engines": {
+    "node": ">= 24.7.0"
+  },
+  "feathers": {
+    "language": "ts",
+    "packager": "npm",
+    "database": "sqlite",
+    "framework": "koa",
+    "transports": [
+      "rest",
+      "websockets"
+    ],
+    "schema": "typebox"
+  },
+  "directories": {
+    "lib": "src",
+    "test": "test"
+  },
+  "files": [
+    "lib/client.js",
+    "lib/**/*.d.ts",
+    "lib/**/*.shared.js"
+  ],
+  "main": "lib/client",
+  "scripts": {
+    "dev": "nodemon -x ts-node src/index.ts",
+    "compile": "shx rm -rf lib/ && tsc",
+    "start": "node lib/",
+    "prettier": "npx prettier \"**/*.ts\" --write",
+    "mocha": "cross-env NODE_ENV=test mocha test/ --require ts-node/register --recursive --extension .ts --exit",
+    "test": "cross-env NODE_ENV=test npm run migrate && npm run mocha",
+    "test:watch": "cross-env NODE_ENV=test npm run mocha -- --watch",
+    "test:coverage": "cross-env NODE_ENV=test nyc npm run mocha",
+    "test:coverage:report": "nyc report --reporter=html --reporter=text",
+    "bundle:client": "npm run compile && npm pack --pack-destination ./public",
+    "migrate": "knex migrate:latest",
+    "migrate:make": "knex migrate:make"
+  },
+  "nyc": {
+    "extends": "@istanbuljs/nyc-config-typescript",
+    "all": true,
+    "include": [
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "src/**/*.d.ts",
+      "src/**/*.shared.ts"
+    ],
+    "reporter": [
+      "text",
+      "lcov"
+    ],
+    "check-coverage": false
+  },
+  "dependencies": {
+    "@feathersjs/adapter-commons": "^5.0.40",
+    "@feathersjs/authentication": "^5.0.40",
+    "@feathersjs/authentication-client": "^5.0.40",
+    "@feathersjs/authentication-local": "^5.0.40",
+    "@feathersjs/authentication-oauth": "^5.0.40",
+    "@feathersjs/configuration": "^5.0.40",
+    "@feathersjs/errors": "^5.0.40",
+    "@feathersjs/feathers": "^5.0.40",
+    "@feathersjs/knex": "^5.0.40",
+    "@feathersjs/koa": "^5.0.40",
+    "@feathersjs/schema": "^5.0.40",
+    "@feathersjs/socketio": "^5.0.40",
+    "@feathersjs/transport-commons": "^5.0.40",
+    "@feathersjs/typebox": "^5.0.40",
+    "@koa/multer": "^4.0.0",
+    "knex": "^3.1.0",
+    "multer": "^2.0.2",
+    "openai": "^6.22.0",
+    "sqlite3": "^5.1.7",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@feathersjs/cli": "^5.0.40",
+    "@feathersjs/rest-client": "^5.0.40",
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@types/koa__multer": "^2.0.8",
+    "@types/mocha": "^10.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.3.0",
+    "@types/sinon": "^21.0.0",
+    "axios": "^1.13.5",
+    "cross-env": "^10.1.0",
+    "mocha": "^11.7.5",
+    "nodemon": "^3.1.11",
+    "nyc": "^17.1.0",
+    "prettier": "^3.8.1",
+    "shx": "^0.4.0",
+    "sinon": "^21.0.1",
+    "source-map-support": "^0.5.21",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

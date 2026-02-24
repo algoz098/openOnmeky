@@ -1,0 +1,8 @@
+{
+  "require": ["ts-node/register"],
+  "recursive": true,
+  "extension": ["ts"],
+  "exit": true,
+  "loader": "ts-node/esm"
+}
+
