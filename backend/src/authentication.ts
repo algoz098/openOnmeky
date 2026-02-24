@@ -2,7 +2,7 @@
 import { AuthenticationService, JWTStrategy } from '@feathersjs/authentication'
 import { LocalStrategy } from '@feathersjs/authentication-local'
 
-import type { Application } from './declarations'
+import type { Application, HookContext } from './declarations'
 
 declare module './declarations' {
   interface ServiceTypes {

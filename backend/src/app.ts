@@ -3,6 +3,8 @@ import { feathers } from '@feathersjs/feathers'
 import configuration from '@feathersjs/configuration'
 import { koa, rest, bodyParser, errorHandler, parseAuthentication, cors, serveStatic } from '@feathersjs/koa'
 import socketio from '@feathersjs/socketio'
+import helmet from 'koa-helmet'
+import rateLimit from 'koa-ratelimit'
 
 import { configurationValidator } from './configuration'
 import type { Application } from './declarations'
@@ -36,7 +38,79 @@ if (jwtSecret === INSECURE_JWT_SECRET) {
 }
 
 // Set up Koa middleware
-app.use(cors())
+app.use(helmet())
+app.use(
+  cors({
+    origin: (ctx) => {
+      const origin = ctx.request.header.origin
+      const allowedOrigins = app.get('origins')
+      // Se a origem estiver na lista permitida, retorna ela
+      if (Array.isArray(allowedOrigins) && origin && allowedOrigins.includes(origin)) {
+        return origin
+      }
+      // Se nao, retorna a primeira origem permitida (geralmente o proprio backend ou frontend principal)
+      return Array.isArray(allowedOrigins) ? allowedOrigins[0] : '*'
+    }
+  })
+)
+
+// Rate limiting
+app.use(
+  rateLimit({
+    driver: 'memory',
+    db: new Map(),
+    duration: 60000,
+    errorMessage: 'Muitas requisicoes, por favor tente novamente mais tarde.',
+    id: (ctx) => ctx.ip,
+    headers: {
+      remaining: 'Rate-Limit-Remaining',
+      reset: 'Rate-Limit-Reset',
+      total: 'Rate-Limit-Total'
+    },
+    max: 100,
+    disableHeader: false
+  })
+)
+
+// Middleware para gerenciar cookies HttpOnly
+app.use(async (ctx, next) => {
+  // 1. Extrair token do cookie para autenticacao
+  const { authorization } = ctx.request.header
+  const cookieToken = ctx.cookies.get('feathers-jwt')
+
+  if (!authorization && cookieToken) {
+    ctx.request.header.authorization = `Bearer ${cookieToken}`
+  }
+
+  await next()
+
+  // 2. Definir cookie no login bem-sucedido (POST /authentication)
+  if (ctx.method === 'POST' && ctx.path === '/authentication' && ctx.status === 201) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const body = ctx.body as any
+    if (body && body.accessToken) {
+      ctx.cookies.set('feathers-jwt', body.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/',
+        maxAge: 24 * 60 * 60 * 1000 // 1 dia
+      })
+    }
+  }
+
+  // 3. Limpar cookie no logout (DELETE /authentication)
+  if (ctx.method === 'DELETE' && ctx.path.startsWith('/authentication') && ctx.status === 200) {
+    ctx.cookies.set('feathers-jwt', null, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 0 // Expira imediatamente
+    })
+  }
+})
+
 app.use(serveStatic(app.get('public')))
 app.use(errorHandler())
 app.use(parseAuthentication())

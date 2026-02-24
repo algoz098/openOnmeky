@@ -16,7 +16,8 @@ const socket = io(host, {
   autoConnect: true,
   reconnection: true,
   path: '/socket.io/',
-  transports: ['websocket']
+  transports: ['websocket'],
+  withCredentials: true
 })
 
 // Cliente Feathers base
