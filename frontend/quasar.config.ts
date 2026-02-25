@@ -60,7 +60,17 @@ export default defineConfig(ctx => {
       // polyfillModulePreload: true,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      extendViteConf(viteConf) {
+        // Allow serving files from the root node_modules (monorepo setup)
+        viteConf.server = viteConf.server || {}
+        viteConf.server.fs = viteConf.server.fs || {}
+        viteConf.server.fs.allow = [
+          // Allow the frontend directory
+          fileURLToPath(new URL('.', import.meta.url)),
+          // Allow the root node_modules for shared dependencies
+          fileURLToPath(new URL('../node_modules', import.meta.url)),
+        ]
+      },
       // viteVuePluginOptions: {},
 
       vitePlugins: [
@@ -86,7 +96,7 @@ export default defineConfig(ctx => {
           {
             vueTsc: true,
             eslint: {
-              lintCommand: 'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
+              lintCommand: 'eslint -c ./eslint.config.js "./src/**/*.{ts,js,mjs,cjs,vue}"',
               useFlatConfig: true
             }
           },
