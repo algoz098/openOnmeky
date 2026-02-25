@@ -247,4 +247,3 @@ export const verifyPostOwnership = async (context: HookContext) => {
 
   return context
 }
-

@@ -58,7 +58,7 @@ export const userPatchResolver = resolve<UserPatch, HookContext<UserService>>({
 })
 
 // Schema for allowed query properties
-export const userQueryProperties = Type.Pick(userSchema, ['id', 'email', 'role'])
+export const userQueryProperties = Type.Pick(userSchema, ['id', 'email', 'role', 'name'])
 export const userQuerySchema = Type.Intersect(
   [
     querySyntax(userQueryProperties),
@@ -70,12 +70,19 @@ export const userQuerySchema = Type.Intersect(
 export type UserQuery = Static<typeof userQuerySchema>
 export const userQueryValidator = getValidator(userQuerySchema, queryValidator)
 export const userQueryResolver = resolve<UserQuery, HookContext<UserService>>({
-  // If there is a user (e.g. with authentication), they are only allowed to see their own data
-  id: async (value, user, context) => {
-    if (context.params.user) {
-      return context.params.user.id
+  // Admins e super-admins podem ver todos os usuarios
+  // Outros usuarios so podem ver seus proprios dados
+  id: async (value, _user, context) => {
+    const currentUser = context.params.user
+    if (currentUser) {
+      const userRole = currentUser.role || 'viewer'
+      // Admins e super-admins podem ver todos
+      if (userRole === 'super-admin' || userRole === 'admin') {
+        return value
+      }
+      // Outros usuarios so veem seus proprios dados
+      return currentUser.id
     }
-
     return value
   }
 })

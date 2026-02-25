@@ -4,11 +4,7 @@
 
 import assert from 'assert'
 import { app, createTestUser } from '../../setup'
-import {
-  setupAIMocks,
-  cleanupAIMocks,
-  setMockResponse
-} from '../../helpers/ai-mock.helper'
+import { setupAIMocks, cleanupAIMocks, setMockResponse } from '../../helpers/ai-mock.helper'
 
 // Cast para any para permitir testes TDD antes da implementacao do servico
 const getAIService = () => (app as unknown as { service: (name: string) => unknown }).service('ai')
@@ -223,7 +219,8 @@ describe('AI content generation service', () => {
 
       // Configura resposta mais longa para LinkedIn (fallback usa ollama)
       setMockResponse('ollama', {
-        content: 'Temos o prazer de anunciar uma nova funcionalidade que vai revolucionar a forma como voce trabalha. Nossa equipe de engenharia desenvolveu esta solucao pensando em voce. Confira todos os detalhes em nosso blog e descubra como essa inovacao pode impactar positivamente seus resultados.'
+        content:
+          'Temos o prazer de anunciar uma nova funcionalidade que vai revolucionar a forma como voce trabalha. Nossa equipe de engenharia desenvolveu esta solucao pensando em voce. Confira todos os detalhes em nosso blog e descubra como essa inovacao pode impactar positivamente seus resultados.'
       })
 
       const result = await (getAIService() as { create: Function }).create({

@@ -39,7 +39,12 @@ export function useUsersApi() {
     }
   }
 
-  const createUser = async (data: { email: string; password: string }) => {
+  const createUser = async (data: {
+    email: string
+    password: string
+    name?: string
+    role?: 'super-admin' | 'admin' | 'editor' | 'viewer'
+  }) => {
     usersStore.setLoading(true)
     usersStore.setError('')
     try {

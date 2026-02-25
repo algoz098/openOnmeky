@@ -3,7 +3,8 @@ import { defineStore } from 'pinia'
 export interface UserRecord {
   id: number
   email: string
-  role?: string
+  name?: string
+  role?: 'super-admin' | 'admin' | 'editor' | 'viewer'
   created_at?: string
   updated_at?: string
 }

@@ -294,7 +294,11 @@ describe('post validation', () => {
       assert.ok(post.id, 'Editor should be able to create posts')
       assert.strictEqual(post.status, 'draft')
 
-      const published = await getPostsService().patch(post.id, { status: 'published' }, userParams(editorUser))
+      const published = await getPostsService().patch(
+        post.id,
+        { status: 'published' },
+        userParams(editorUser)
+      )
       assert.strictEqual(published.status, 'published')
     })
 

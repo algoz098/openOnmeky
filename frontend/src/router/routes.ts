@@ -38,7 +38,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'calendar', component: () => import('pages/CalendarPage.vue') },
 
       // Admin
-      { path: 'admin/users', component: () => import('pages/DashboardPage.vue') },
+      { path: 'admin/users', component: () => import('pages/admin/users/UsersListPage.vue') },
       { path: 'admin/settings', component: () => import('pages/admin/SettingsPage.vue') }
     ]
   },

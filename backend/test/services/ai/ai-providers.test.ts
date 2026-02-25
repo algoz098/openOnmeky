@@ -4,17 +4,13 @@
 
 import assert from 'assert'
 import { app, createTestUser } from '../../setup'
-import {
-  setupAIMocks,
-  cleanupAIMocks,
-  setMockResponse,
-  getMockProvider
-} from '../../helpers/ai-mock.helper'
+import { setupAIMocks, cleanupAIMocks, setMockResponse, getMockProvider } from '../../helpers/ai-mock.helper'
 
 // Cast para any para permitir testes TDD antes da implementacao do servico
 const getAIService = () => (app as unknown as { service: (name: string) => unknown }).service('ai')
 const getBrandsService = () => (app as unknown as { service: (name: string) => unknown }).service('brands')
-const getProvidersService = () => (app as unknown as { service: (name: string) => unknown }).service('ai-providers')
+const getProvidersService = () =>
+  (app as unknown as { service: (name: string) => unknown }).service('ai-providers')
 
 describe('AI providers', () => {
   let testBrandId: number

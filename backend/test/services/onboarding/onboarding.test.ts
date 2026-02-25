@@ -11,10 +11,11 @@ const getUsersService = () => (app as any).service('users')
 const getSystemService = () => (app as any).service('system')
 
 // Funcao helper para limpar usuarios e resetar estado do sistema
+// Usa provider: undefined para chamadas internas (bypass de autenticacao)
 const cleanUsersAndResetSystem = async () => {
-  const users = await getUsersService().find()
-  for (const user of users.data) {
-    await getUsersService().remove(user.id)
+  const users = await getUsersService().find({ paginate: false })
+  for (const user of users.data || users) {
+    await getUsersService().remove(user.id, { provider: undefined })
   }
 }
 

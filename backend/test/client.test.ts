@@ -45,7 +45,7 @@ describe('application client tests', () => {
 
     await client.logout()
 
-    // Remove the test user on the server
-    await app.service('users').remove(user.id)
+    // Remove the test user on the server (internal call without provider)
+    await app.service('users').remove(user.id, { provider: undefined })
   })
 })

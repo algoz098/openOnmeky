@@ -4,7 +4,10 @@
 import * as sinon from 'sinon'
 import type { Application } from '../../src/declarations'
 import { MockAIProvider, createMockProvider, defaultTextResponse } from '../mocks/ai-providers.mock'
-import type { AIProviderName, GenerateTextResult } from '../../src/services/ai-providers/ai-provider.interface'
+import type {
+  AIProviderName,
+  GenerateTextResult
+} from '../../src/services/ai-providers/ai-provider.interface'
 
 // Armazena os stubs ativos para limpeza
 let activeStubs: sinon.SinonStub[] = []
@@ -38,14 +41,16 @@ export function setupAIMocks(app: Application): Map<AIProviderName, MockAIProvid
   const settingsService = app.service('settings') as any
 
   // Stub getProviderConfig - retorna config habilitado
-  const getProviderConfigStub = sinon.stub(settingsService, 'getProviderConfig').callsFake(async (name: unknown) => {
-    const providerName = name as string
-    return {
-      enabled: true,
-      apiKey: `mock-api-key-${providerName}`,
-      baseUrl: providerName === 'ollama' ? 'http://localhost:11434' : undefined
-    }
-  })
+  const getProviderConfigStub = sinon
+    .stub(settingsService, 'getProviderConfig')
+    .callsFake(async (name: unknown) => {
+      const providerName = name as string
+      return {
+        enabled: true,
+        apiKey: `mock-api-key-${providerName}`,
+        baseUrl: providerName === 'ollama' ? 'http://localhost:11434' : undefined
+      }
+    })
   activeStubs.push(getProviderConfigStub)
 
   // Stub getAISettings - retorna configuracao padrao
@@ -71,12 +76,12 @@ export function setupAIMocks(app: Application): Map<AIProviderName, MockAIProvid
   const aiServicePrototype = Object.getPrototypeOf(aiService)
 
   // Stub createProviderInstance para retornar mock
-  const createProviderStub = sinon.stub(aiServicePrototype, 'createProviderInstance').callsFake(
-    (name: unknown) => {
+  const createProviderStub = sinon
+    .stub(aiServicePrototype, 'createProviderInstance')
+    .callsFake((name: unknown) => {
       const providerName = name as AIProviderName
       return mockProviders.get(providerName) || createMockProvider(providerName)
-    }
-  )
+    })
   activeStubs.push(createProviderStub)
 
   return mockProviders
@@ -111,10 +116,7 @@ export function getMockProvider(name: AIProviderName): MockAIProvider | undefine
 /**
  * Configura resposta customizada para um provider
  */
-export function setMockResponse(
-  name: AIProviderName,
-  response: Partial<GenerateTextResult>
-): void {
+export function setMockResponse(name: AIProviderName, response: Partial<GenerateTextResult>): void {
   const provider = mockProviders.get(name)
   if (provider) {
     provider.setTextResponse(response)
@@ -154,4 +156,3 @@ export function resetCallCounters(): void {
     provider.reset()
   }
 }
-

@@ -220,12 +220,33 @@ export async function createTestUser(
 }
 
 /**
- * Cria params com user para chamadas de servico em testes
+ * Cria params com user para chamadas de servico em testes (chamada interna)
+ * NAO inclui provider, entao os hooks de autenticacao nao sao executados
  * Usa type casting para evitar erros de TypeScript com tipos parciais
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function userParams(user: { id: number; email?: string; name?: string; role?: string }): any {
   return {
+    user: {
+      id: user.id,
+      email: user.email || `user-${user.id}@test.com`,
+      name: user.name || 'Test User',
+      role: user.role || 'viewer'
+    }
+  }
+}
+
+/**
+ * Cria params com user para chamadas de servico em testes (simula chamada externa)
+ * Inclui provider: 'rest' para ativar hooks de permissao/seguranca (checkPermission, etc)
+ * mas NAO passa pelo hook authenticate('jwt') porque o usuario ja esta no contexto
+ * Usado para testar logica de seguranca como preventSelfDelete, protectLastSuperAdmin
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function externalUserParams(user: { id: number; email?: string; name?: string; role?: string }): any {
+  return {
+    provider: 'rest',
+    authenticated: true, // Bypass do hook authenticate
     user: {
       id: user.id,
       email: user.email || `user-${user.id}@test.com`,

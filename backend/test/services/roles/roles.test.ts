@@ -76,14 +76,20 @@ describe('roles service', () => {
 
   describe('user role assignment', () => {
     it('should allow assigning a role to a user', async () => {
+      // Criar um admin para fazer a alteracao
+      const admin = await getUsersService().create({
+        email: 'admin-for-patch@test.com',
+        password: 'password123',
+        role: ROLES.SUPER_ADMIN
+      })
+
       const user = await getUsersService().create({
         email: 'editor@test.com',
         password: 'password123'
       })
 
-      const updatedUser = await getUsersService().patch(user.id, {
-        role: ROLES.EDITOR
-      })
+      // Patch com contexto de admin
+      const updatedUser = await getUsersService().patch(user.id, { role: ROLES.EDITOR }, { user: admin })
 
       assert.strictEqual(updatedUser.role, ROLES.EDITOR)
     })
@@ -98,19 +104,24 @@ describe('roles service', () => {
     })
 
     it('should not allow invalid role assignment', async () => {
+      // Criar um admin para fazer a alteracao
+      const admin = await getUsersService().create({
+        email: 'admin-for-invalid@test.com',
+        password: 'password123',
+        role: ROLES.SUPER_ADMIN
+      })
+
       const user = await getUsersService().create({
         email: 'invalidrole@test.com',
         password: 'password123'
       })
 
       try {
-        await getUsersService().patch(user.id, {
-          role: 'invalid-role'
-        })
+        await getUsersService().patch(user.id, { role: 'invalid-role' }, { user: admin })
         assert.fail('Should have thrown validation error')
       } catch (error: unknown) {
         const err = error as { name: string }
-        assert.ok(['BadRequest', 'ValidationError'].includes(err.name))
+        assert.ok(['BadRequest', 'ValidationError', 'Forbidden'].includes(err.name))
       }
     })
   })

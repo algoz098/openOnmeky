@@ -67,9 +67,16 @@ export const hasPermission = (roleName: string, permissionToCheck: Permission): 
 /**
  * Hook para verificar se o usuario tem a permissao necessaria
  * @param requiredPermission - Permissao necessaria para acessar o recurso
+ *
+ * Nota: Chamadas internas (provider === undefined) ignoram verificacoes de permissao
  */
 export const checkPermission = (requiredPermission: Permission) => {
   return async (context: HookContext) => {
+    // Chamadas internas (server-side) nao precisam de verificacao de permissao
+    if (context.params.provider === undefined) {
+      return context
+    }
+
     const user = context.params.user
 
     if (!user) {
@@ -89,9 +96,16 @@ export const checkPermission = (requiredPermission: Permission) => {
 /**
  * Hook para verificar se o usuario tem pelo menos uma das permissoes
  * @param permissions - Lista de permissoes aceitas
+ *
+ * Nota: Chamadas internas (provider === undefined) ignoram verificacoes de permissao
  */
 export const checkAnyPermission = (permissions: Permission[]) => {
   return async (context: HookContext) => {
+    // Chamadas internas (server-side) nao precisam de verificacao de permissao
+    if (context.params.provider === undefined) {
+      return context
+    }
+
     const user = context.params.user
 
     if (!user) {
@@ -100,7 +114,7 @@ export const checkAnyPermission = (permissions: Permission[]) => {
 
     const userRole = user.role || 'viewer'
 
-    const hasAny = permissions.some((perm) => hasPermission(userRole, perm))
+    const hasAny = permissions.some(perm => hasPermission(userRole, perm))
 
     if (!hasAny) {
       throw new Forbidden(`Permissao negada. Requer uma das: ${permissions.join(', ')}`)
@@ -112,8 +126,15 @@ export const checkAnyPermission = (permissions: Permission[]) => {
 
 /**
  * Hook para verificar se o usuario e admin ou super-admin
+ *
+ * Nota: Chamadas internas (provider === undefined) ignoram verificacoes de permissao
  */
 export const requireAdmin = async (context: HookContext) => {
+  // Chamadas internas (server-side) nao precisam de verificacao de permissao
+  if (context.params.provider === undefined) {
+    return context
+  }
+
   const user = context.params.user
 
   if (!user) {
@@ -131,8 +152,15 @@ export const requireAdmin = async (context: HookContext) => {
 
 /**
  * Hook para verificar se o usuario e super-admin
+ *
+ * Nota: Chamadas internas (provider === undefined) ignoram verificacoes de permissao
  */
 export const requireSuperAdmin = async (context: HookContext) => {
+  // Chamadas internas (server-side) nao precisam de verificacao de permissao
+  if (context.params.provider === undefined) {
+    return context
+  }
+
   const user = context.params.user
 
   if (!user) {
@@ -145,4 +173,3 @@ export const requireSuperAdmin = async (context: HookContext) => {
 
   return context
 }
-
