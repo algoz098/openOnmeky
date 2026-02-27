@@ -73,15 +73,16 @@ export const imageGenerationMetadataSchema = Type.Object({
 })
 
 // Schema de slide do carrousel (para posts) - com suporte a master image
+// Usando Union com Null para aceitar valores null alem de undefined
 export const postCarouselSlideSchema = Type.Object({
   index: Type.Number(),
   purpose: Type.String(), // 'hook', 'features', 'summary', 'cta'
-  text: Type.Optional(Type.String()),
-  imageUrl: Type.Optional(Type.String()), // Imagem final com texto (retrocompativel)
-  imagePrompt: Type.Optional(Type.String()),
+  text: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  imageUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])), // Imagem final com texto (retrocompativel)
+  imagePrompt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   // Novos campos para arquitetura master + derivadas
-  masterImageUrl: Type.Optional(Type.String()), // Imagem base SEM texto
-  typography: Type.Optional(typographyConfigSchema),
+  masterImageUrl: Type.Optional(Type.Union([Type.String(), Type.Null()])), // Imagem base SEM texto
+  typography: Type.Optional(Type.Union([typographyConfigSchema, Type.Null()])),
   versions: Type.Optional(
     Type.Partial(
       Type.Object({
@@ -92,7 +93,7 @@ export const postCarouselSlideSchema = Type.Object({
       })
     )
   ),
-  generationMetadata: Type.Optional(imageGenerationMetadataSchema)
+  generationMetadata: Type.Optional(Type.Union([imageGenerationMetadataSchema, Type.Null()]))
 })
 export type PostCarouselSlide = Static<typeof postCarouselSlideSchema>
 
