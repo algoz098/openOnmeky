@@ -38,7 +38,23 @@ if (jwtSecret === INSECURE_JWT_SECRET) {
 }
 
 // Set up Koa middleware
-app.use(helmet())
+// Helmet com configuracoes ajustadas para permitir recursos cross-origin (imagens, fontes, etc)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Permite que recursos sejam acessados por outras origens
+    crossOriginEmbedderPolicy: false, // Desabilita para permitir embed de recursos externos
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'blob:', '*'], // Permite imagens de qualquer origem
+        styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+        fontSrc: ["'self'", 'https:', 'data:'],
+        scriptSrc: ["'self'"],
+        connectSrc: ["'self'", 'ws:', 'wss:', '*'] // Permite WebSocket e conexoes
+      }
+    }
+  })
+)
 app.use(
   cors({
     origin: (ctx) => {
