@@ -136,15 +136,28 @@
 
         <!-- Status -->
         <q-item-section side top>
-          <q-chip
-            dense
-            :color="getStatusColor(post.status)"
-            text-color="white"
-            size="sm"
-            :icon="getStatusIcon(post.status)"
-          >
-            {{ getStatusLabel(post.status) }}
-          </q-chip>
+          <div class="column items-end q-gutter-xs">
+            <q-chip
+              dense
+              :color="getStatusColor(post.status)"
+              text-color="white"
+              size="sm"
+              :icon="getStatusIcon(post.status)"
+            >
+              {{ getStatusLabel(post.status) }}
+            </q-chip>
+            <!-- Indicador de geracao em andamento -->
+            <q-chip
+              v-if="post.aiState === 'loading'"
+              dense
+              color="orange"
+              text-color="white"
+              size="sm"
+              icon="hourglass_top"
+            >
+              Gerando...
+            </q-chip>
+          </div>
         </q-item-section>
 
         <!-- Acoes -->
@@ -167,6 +180,15 @@
                 <q-item clickable v-close-popup @click="duplicatePost(post)">
                   <q-item-section avatar><q-icon name="content_copy" color="secondary" /></q-item-section>
                   <q-item-section>Duplicar</q-item-section>
+                </q-item>
+                <q-item
+                  v-if="post.aiState === 'loading'"
+                  clickable
+                  v-close-popup
+                  @click="cancelGeneration(post)"
+                >
+                  <q-item-section avatar><q-icon name="cancel" color="orange" /></q-item-section>
+                  <q-item-section class="text-orange">Cancelar Geracao</q-item-section>
                 </q-item>
                 <q-separator />
                 <q-item
@@ -483,6 +505,27 @@ const duplicatePost = async (post: Post) => {
     $q.notify({
       type: 'negative',
       message: 'Erro ao duplicar post',
+      icon: 'error'
+    })
+  }
+}
+
+// Cancela geracao de IA travada
+const cancelGeneration = async (post: Post) => {
+  try {
+    await updatePost(post.id, {
+      aiState: 'idle',
+      activeLogId: null
+    })
+    $q.notify({
+      type: 'positive',
+      message: 'Geracao cancelada com sucesso!',
+      icon: 'cancel'
+    })
+  } catch {
+    $q.notify({
+      type: 'negative',
+      message: 'Erro ao cancelar geracao',
       icon: 'error'
     })
   }
