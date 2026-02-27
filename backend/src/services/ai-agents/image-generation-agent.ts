@@ -23,7 +23,7 @@ interface ImageGenerationInput {
 
 export class ImageGenerationAgent extends BaseAgent {
   constructor(app: Application) {
-    super(app, 'imageGeneration', 'imagen-3.0-generate-002')
+    super(app, 'imageGeneration', 'imagen-4.0-generate-001')
   }
 
   async execute(

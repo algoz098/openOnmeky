@@ -126,7 +126,9 @@ describe('Cookie Authentication tests', () => {
     // console.log('Logout Cookies:', logoutCookies)
 
     // Koa sets expires to epoch for deletion
-    const clearCookie = logoutCookies.find(c => c.startsWith('feathers-jwt=') && (c.includes('Max-Age=0') || c.toLowerCase().includes('expires=')))
+    const clearCookie = logoutCookies.find(
+      c => c.startsWith('feathers-jwt=') && (c.includes('Max-Age=0') || c.toLowerCase().includes('expires='))
+    )
     assert.ok(clearCookie, 'Cookie should be cleared (Max-Age=0 or Expires in past)')
   })
 })

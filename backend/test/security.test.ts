@@ -85,6 +85,9 @@ describe('Security tests', () => {
     const responses = await Promise.all(requests)
     const tooManyRequests = responses.filter(r => r.status === 429)
 
-    assert.ok(tooManyRequests.length > 0, `Should have received 429 Too Many Requests. Got ${tooManyRequests.length}`)
+    assert.ok(
+      tooManyRequests.length > 0,
+      `Should have received 429 Too Many Requests. Got ${tooManyRequests.length}`
+    )
   })
 })

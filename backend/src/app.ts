@@ -57,7 +57,7 @@ app.use(
 )
 app.use(
   cors({
-    origin: (ctx) => {
+    origin: ctx => {
       const origin = ctx.request.header.origin
       const allowedOrigins = app.get('origins')
       // Se a origem estiver na lista permitida, retorna ela
@@ -77,7 +77,7 @@ app.use(
     db: new Map(),
     duration: 60000,
     errorMessage: 'Muitas requisicoes, por favor tente novamente mais tarde.',
-    id: (ctx) => ctx.ip,
+    id: ctx => ctx.ip,
     headers: {
       remaining: 'Rate-Limit-Remaining',
       reset: 'Rate-Limit-Reset',
