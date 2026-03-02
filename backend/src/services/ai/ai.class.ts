@@ -18,11 +18,11 @@ import {
   GroqProvider
 } from '../ai-providers'
 import type { SettingsService, AIProviderSetting } from '../settings/settings.class'
-import { AgentOrchestrator } from '../ai-agents'
+import { AgentOrchestrator, MusicGenerationAgent } from '../ai-agents'
 import { getAICostCalculator, getAIUsageService } from '../ai-usage'
-import type { AgentExecution } from '../ai-agents/types'
+import type { AgentExecution, AgentContext } from '../ai-agents/types'
 
-export interface AIParams extends Params {}
+export interface AIParams extends Params { }
 
 export interface AIServiceOptions {
   app: Application
@@ -89,6 +89,8 @@ export class AIService<ServiceParams extends Params = AIParams> implements Servi
         return this.suggestHashtags(data, provider, providerName)
       case 'carousel':
         return this.generateCarousel(data, _params)
+      case 'music-generation':
+        return this.generateMusic(data, brand, _params)
       default:
         throw new BadRequest(`Tipo de operacao desconhecido: ${data.type}`)
     }
@@ -176,7 +178,10 @@ export class AIService<ServiceParams extends Params = AIParams> implements Servi
           throw new BadRequest('Google AI requer API key configurada.')
         }
         return new GoogleAIProvider({
-          apiKey: config.apiKey
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+          projectId: config.projectId,
+          location: config.location
         })
       case 'ollama':
         return new OllamaProvider({
@@ -579,6 +584,112 @@ Suggest between 5 and 10 hashtags total.`
       model: result.model,
       hashtags,
       usage: usageWithCost
+    }
+  }
+
+  /**
+   * Gera trilha sonora usando MusicGenerationAgent (Google Lyria)
+   */
+  private async generateMusic(data: AIData, brand: BrandInfo, params?: AIParams): Promise<AIResult> {
+    console.log('[AIService] generateMusic chamado para marca:', brand.name)
+
+    // Cria agente de geracao de musica
+    const musicAgent = new MusicGenerationAgent(this.app)
+
+    // Obtem userId dos params
+    const userId = (params as Record<string, unknown>)?.user
+      ? (params as Record<string, { id?: number }>)?.user?.id || 0
+      : 0
+
+    // Monta contexto do agente
+    const context: AgentContext = {
+      brandId: data.brandId,
+      brandName: brand.name,
+      brandDescription: brand.description,
+      toneOfVoice: brand.toneOfVoice,
+      values: brand.values,
+      preferredWords: brand.preferredWords,
+      avoidedWords: brand.avoidedWords,
+      targetAudience: brand.targetAudience,
+      sector: (brand as unknown as { sector?: string }).sector,
+      platform: data.platform || 'instagram',
+      originalPrompt: data.prompt || '',
+      userId,
+      aiConfig: brand.aiConfig
+    }
+
+    // Executa a geracao em background
+    this.executeBackgroundMusicGeneration(data.brandId, data.postId, context, data.musicOptions)
+
+    return {
+      content: 'Geracao de musica iniciada em background',
+      provider: 'google',
+      model: 'lyria-realtime-exp',
+      brandContextUsed: true,
+      promptUsed: context.originalPrompt
+    }
+  }
+
+  /**
+   * Executa a geracao de musica em background sem bloquear a requisicao
+   */
+  private async executeBackgroundMusicGeneration(
+    brandId: number,
+    postId: number | undefined,
+    context: AgentContext,
+    musicOptions: AIData['musicOptions']
+  ): Promise<void> {
+    const postsService = this.app.service('posts')
+
+    if (!postId) {
+      console.warn('[AIService] Geracao de musica em background ignorada: postId nao fornecido')
+      return
+    }
+
+    try {
+      // 1. Atualizar estado do post para loading
+      await postsService.patch(postId, {
+        musicAiState: 'loading'
+      })
+
+      // 2. Executar geracao
+      const musicAgent = new MusicGenerationAgent(this.app)
+      const result = await musicAgent.execute(context, {
+        genre: musicOptions?.genre,
+        mood: musicOptions?.mood,
+        tempo: musicOptions?.tempo,
+        customPrompt: musicOptions?.customPrompt,
+        postContent: musicOptions?.postContent,
+        briefing: musicOptions?.briefing,
+        slideTexts: musicOptions?.slideTexts,
+        slideDescriptions: musicOptions?.slideDescriptions
+      })
+
+      console.log('[AIService] Musica gerada com sucesso:', result.result.audioUrl)
+
+      // 3. Atualizar post com audio gerado e estado completed
+      await postsService.patch(postId, {
+        generatedAudio: {
+          url: result.result.audioUrl,
+          format: result.result.format,
+          durationSeconds: result.result.durationSeconds,
+          prompt: result.result.prompt
+        },
+        musicAiState: 'completed'
+      })
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao gerar musica'
+      console.error('[AIService] Erro na geracao de musica em background:', errorMessage)
+
+      // Atualizar post com estado de erro
+      try {
+        await postsService.patch(postId, {
+          musicAiState: 'error'
+        })
+      } catch (patchError) {
+        console.error('[AIService] Falha ao atualizar estado de erro no post:', patchError)
+      }
     }
   }
 

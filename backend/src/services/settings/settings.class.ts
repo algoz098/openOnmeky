@@ -45,7 +45,10 @@ export class SettingsService implements ServiceInterface<Settings> {
   }
 
   // Atualiza configuracao de um provider especifico
-  async updateProvider(provider: AIProviderName, data: Partial<AIProviderSetting>): Promise<AISettings> {
+  async updateProvider(
+    provider: AIProviderName,
+    data: Partial<AIProviderSetting>
+  ): Promise<AIProviderSetting & { id: string }> {
     const current = await this.getAISettings()
 
     const existingConfig = current[provider] || { enabled: false }
@@ -57,25 +60,28 @@ export class SettingsService implements ServiceInterface<Settings> {
 
     await this.saveAISettings(current)
 
-    return current
+    // Retorna a configuracao do provider com id para compatibilidade com feathers-pinia
+    return { id: provider, ...current[provider] } as AIProviderSetting & { id: string }
   }
 
   // Define o provider padrao
-  async setDefaultProvider(provider: AIProviderName): Promise<AISettings> {
+  async setDefaultProvider(provider: AIProviderName): Promise<AISettings & { id: string }> {
     const current = await this.getAISettings()
     current.defaultProvider = provider
     await this.saveAISettings(current)
-    return current
+    // Retorna com id para compatibilidade com feathers-pinia
+    return { id: 'default', ...current }
   }
 
   // Atualiza configuracoes globais de IA
-  async updateGlobalSettings(data: { maxTokens?: number }): Promise<AISettings> {
+  async updateGlobalSettings(data: { maxTokens?: number }): Promise<{ id: string; maxTokens?: number }> {
     const current = await this.getAISettings()
     if (data.maxTokens !== undefined) {
       current.maxTokens = data.maxTokens
     }
     await this.saveAISettings(current)
-    return current
+    // Retorna com id para compatibilidade com feathers-pinia
+    return { id: 'global', maxTokens: current.maxTokens }
   }
 
   // Retorna configuracao de um provider especifico (para uso interno)
@@ -115,7 +121,11 @@ export class SettingsService implements ServiceInterface<Settings> {
   }
 
   // Atualiza preco de um modelo especifico
-  async updateModelPricing(provider: string, model: string, pricing: ModelPricing): Promise<PricingSettings> {
+  async updateModelPricing(
+    provider: string,
+    model: string,
+    pricing: ModelPricing
+  ): Promise<PricingSettings & { id: string }> {
     const current = await this.getAISettings()
     if (!current.pricing) {
       current.pricing = this.getDefaultPricing()
@@ -128,14 +138,15 @@ export class SettingsService implements ServiceInterface<Settings> {
     current.pricing.lastUpdated = new Date().toISOString()
 
     await this.saveAISettings(current)
-    return current.pricing
+    // Retorna com id para compatibilidade com feathers-pinia
+    return { id: `${provider}/${model}`, ...current.pricing }
   }
 
   // Atualiza todos os precos de um provider
   async updateProviderPricing(
     provider: string,
     models: Record<string, ModelPricing>
-  ): Promise<PricingSettings> {
+  ): Promise<PricingSettings & { id: string }> {
     const current = await this.getAISettings()
     if (!current.pricing) {
       current.pricing = this.getDefaultPricing()
@@ -145,7 +156,8 @@ export class SettingsService implements ServiceInterface<Settings> {
     current.pricing.lastUpdated = new Date().toISOString()
 
     await this.saveAISettings(current)
-    return current.pricing
+    // Retorna com id para compatibilidade com feathers-pinia
+    return { id: provider, ...current.pricing }
   }
 
   // Obtem preco de um modelo especifico (sincrono, usa cache)
@@ -158,11 +170,12 @@ export class SettingsService implements ServiceInterface<Settings> {
   }
 
   // Restaura precos padrao
-  async resetPricingToDefaults(): Promise<PricingSettings> {
+  async resetPricingToDefaults(): Promise<PricingSettings & { id: string }> {
     const current = await this.getAISettings()
     current.pricing = this.getDefaultPricing()
     await this.saveAISettings(current)
-    return current.pricing
+    // Retorna com id para compatibilidade com feathers-pinia
+    return { id: 'reset', ...current.pricing }
   }
 
   // Precos padrao baseados em precos publicos (Fevereiro 2026)

@@ -15,6 +15,7 @@ export const validAiTones = ['formal', 'casual', 'humoristico', 'inspirador'] as
 export const validAspectRatios = ['1:1', '4:5', '9:16', '16:9'] as const
 // Estados da geracao de IA
 export const validAiStates = ['idle', 'loading', 'error'] as const
+export const validMusicAiStates = ['idle', 'loading', 'completed', 'error'] as const
 
 // Schema de tipografia para overlay
 export const typographyConfigSchema = Type.Object({
@@ -173,6 +174,15 @@ export const creativeBriefingSchema = Type.Object({
 })
 export type PostCreativeBriefing = Static<typeof creativeBriefingSchema>
 
+// Schema para audio gerado (trilha sonora)
+export const generatedAudioSchema = Type.Object({
+  url: Type.String({ description: 'URL do arquivo de audio' }),
+  format: Type.String({ description: 'Formato do audio (wav, mp3, etc)' }),
+  durationSeconds: Type.Number({ description: 'Duracao em segundos' }),
+  prompt: Type.String({ description: 'Prompt usado para gerar o audio' })
+})
+export type GeneratedAudio = Static<typeof generatedAudioSchema>
+
 // Schema para breakdown de custos de uso de IA
 export const aiUsageCostBreakdownSchema = Type.Object({
   inputCost: Type.Number(),
@@ -245,6 +255,8 @@ export const postSchema = Type.Object(
     slides: Type.Optional(Type.Array(postCarouselSlideSchema)),
     // Novo campo para persistir o briefing criativo completo
     creativeBriefing: Type.Optional(creativeBriefingSchema),
+    // Campo para persistir a trilha sonora gerada
+    generatedAudio: Type.Optional(generatedAudioSchema),
     // Campos de uso de IA (ultima geracao) - mantidos para compatibilidade
     lastUsagePromptTokens: Type.Optional(Type.Number()),
     lastUsageCompletionTokens: Type.Optional(Type.Number()),
@@ -270,6 +282,15 @@ export const postSchema = Type.Object(
         {
           default: 'idle',
           description: 'Estado da geracao de IA: idle, loading, error'
+        }
+      )
+    ),
+    musicAiState: Type.Optional(
+      Type.Union(
+        validMusicAiStates.map(s => Type.Literal(s)),
+        {
+          default: 'idle',
+          description: 'Estado da geracao de musica: idle, loading, completed, error'
         }
       )
     ),
@@ -315,6 +336,8 @@ export const postDataSchema = Type.Object(
     mediaUrls: Type.Optional(Type.Array(Type.String())),
     slides: Type.Optional(Type.Array(postCarouselSlideSchema)),
     creativeBriefing: Type.Optional(creativeBriefingSchema),
+    // Campo para persistir a trilha sonora gerada
+    generatedAudio: Type.Optional(generatedAudioSchema),
     // Campos de uso de IA (ultima geracao) - mantidos para compatibilidade
     lastUsagePromptTokens: Type.Optional(Type.Number()),
     lastUsageCompletionTokens: Type.Optional(Type.Number()),
@@ -355,6 +378,8 @@ export const postPatchSchema = Type.Partial(
     mediaUrls: Type.Array(Type.String()),
     slides: Type.Array(postCarouselSlideSchema),
     creativeBriefing: creativeBriefingSchema,
+    // Campo para persistir a trilha sonora gerada
+    generatedAudio: generatedAudioSchema,
     // Campos de uso de IA (ultima geracao) - mantidos para compatibilidade
     lastUsagePromptTokens: Type.Number(),
     lastUsageCompletionTokens: Type.Number(),
@@ -374,6 +399,7 @@ export const postPatchSchema = Type.Partial(
     currentVersionId: Type.Number(),
     // Campos de controle de geracao de IA em andamento
     aiState: Type.Union(validAiStates.map(s => Type.Literal(s))),
+    musicAiState: Type.Union(validMusicAiStates.map(s => Type.Literal(s))),
     activeLogId: Type.Union([Type.Number(), Type.Null()]),
     scheduledAt: Type.String({ format: 'date-time' })
   }),
@@ -391,6 +417,7 @@ export const postQueryProperties = Type.Pick(postSchema, [
   'status',
   'origin',
   'content',
+  'musicAiState',
   'scheduledAt',
   'publishedAt',
   'createdAt'

@@ -25,6 +25,7 @@ const brandAIConfigSchema = Type.Object({
   analysis: Type.Optional(aiAgentConfigSchema),
   imageGeneration: Type.Optional(aiAgentConfigSchema),
   textOverlay: Type.Optional(aiAgentConfigSchema),
+  musicGeneration: Type.Optional(aiAgentConfigSchema),
   videoGeneration: Type.Optional(aiAgentConfigSchema),
   creativeDirection: Type.Optional(aiAgentConfigSchema),
   compliance: Type.Optional(aiAgentConfigSchema),

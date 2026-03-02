@@ -112,7 +112,12 @@ export abstract class BaseAgent {
         })
       case 'google':
         if (!config.apiKey) throw new Error('Google AI requer API key')
-        return new GoogleAIProvider({ apiKey: config.apiKey })
+        return new GoogleAIProvider({
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+          projectId: config.projectId,
+          location: config.location
+        })
       case 'ollama':
         return new OllamaProvider({ baseUrl: config.baseUrl || 'http://localhost:11434' })
       case 'anthropic':
@@ -149,7 +154,7 @@ export abstract class BaseAgent {
     // Erro: modelo nao reconhecido - nao ha fallback
     throw new Error(
       `Modelo de imagem desconhecido: "${model}". ` +
-        `Modelos suportados: dall-e-2, dall-e-3, gpt-image-1, imagen-*, gemini-*, nano-banana-*, stable-diffusion`
+      `Modelos suportados: dall-e-2, dall-e-3, gpt-image-1, imagen-*, gemini-*, nano-banana-*, stable-diffusion`
     )
   }
 
@@ -164,6 +169,31 @@ export abstract class BaseAgent {
     }
 
     console.log(`[BaseAgent:${this.agentType}] Modelo ${model} -> Provider ${providerName}`)
+    return this.createProviderInstance(providerName, config)
+  }
+
+  // Mapeia modelos de audio para seus respectivos providers
+  // Atualmente apenas Google (Lyria) suporta geracao de audio
+  protected getProviderForAudioModel(model: string): AIProviderName {
+    // Modelos Google Lyria
+    if (model.includes('lyria')) {
+      return 'google'
+    }
+    // Erro: modelo nao reconhecido - nao ha fallback
+    throw new Error(`Modelo de audio desconhecido: "${model}". ` + `Modelos suportados: lyria-realtime-exp`)
+  }
+
+  // Obtem provider especifico para um modelo de audio
+  protected async getProviderForAudio(model: string): Promise<AIProvider> {
+    const providerName = this.getProviderForAudioModel(model)
+    const settingsService = this.app.service('settings') as unknown as SettingsService
+    const config = await settingsService.getProviderConfig(providerName)
+
+    if (!config?.enabled) {
+      throw new Error(`Provider ${providerName} nao esta habilitado para modelo de audio ${model}`)
+    }
+
+    console.log(`[BaseAgent:${this.agentType}] Modelo audio ${model} -> Provider ${providerName}`)
     return this.createProviderInstance(providerName, config)
   }
 
@@ -196,7 +226,22 @@ export abstract class BaseAgent {
       }
 
       return { result, execution }
-    } catch (error) {
+    } catch (e) {
+      let error = e instanceof Error ? e : new Error(String(e))
+
+      // Captura interceptacoes de fetch failed ou timeouts (Node.js fetch API)
+      const errName = error.name
+      const errCode = (error as any).code || (error as any).cause?.code
+
+      if (errName === 'TimeoutError' || errCode === 'UND_ERR_HEADERS_TIMEOUT') {
+        console.error(`[BaseAgent:${this.agentType}] Timeout (tempo esgotado) ao chamar provider ${provider.name}:`, error)
+        error = new Error(`O provedor ${provider.name} demorou muito para responder e a conexao foi cancelada (Timeout). O modelo pode estar sobrecarregado. Tente mudar para outro modelo nas configuracoes da marca.`)
+      } else if (error.message === 'fetch failed' || errCode === 'ECONNREFUSED' || (error as any).cause?.message?.includes('ECONNREFUSED')) {
+        const causeStr = (error as any).cause ? (error as any).cause.message : error.message
+        console.error(`[BaseAgent:${this.agentType}] Fetch failed ao chamar provider ${provider.name}:`, (error as any).cause || error)
+        error = new Error(`Falha de rede ao conectar com o provedor ${provider.name} (${causeStr}). Verifique sua conexao ou se o servico local esta rodando.`)
+      }
+
       const execution: AgentExecution = {
         agentType: this.agentType,
         provider: provider.name,
@@ -205,7 +250,7 @@ export abstract class BaseAgent {
         completedAt: new Date().toISOString(),
         systemPrompt,
         userPrompt,
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: error.message,
         status: 'failed'
       }
 

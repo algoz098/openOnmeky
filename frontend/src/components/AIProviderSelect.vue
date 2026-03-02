@@ -84,7 +84,10 @@ const filteredOptions = computed(() => {
   }
 
   return providerOptions.value.filter(p => {
-    const caps = PROVIDER_CAPABILITIES[p.value as AIProviderName] || { text: true, image: false, video: false }
+    const caps = PROVIDER_CAPABILITIES[p.value as AIProviderName] || { text: true, image: false, video: false, audio: false }
+    if (props.agent?.supportsAudio) {
+      return caps.audio
+    }
     if (props.agent?.supportsImage) {
       return caps.image
     }

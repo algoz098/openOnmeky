@@ -59,6 +59,10 @@ export class MediaService<ServiceParams extends MediaParams = MediaParams> exten
     // Salva o arquivo
     fs.writeFileSync(fullPath, buffer)
 
+    // Verifica tamanho do arquivo salvo
+    const savedStats = fs.statSync(fullPath)
+    console.log(`[MediaService] Arquivo salvo: ${fullPath}, tamanho: ${savedStats.size} bytes`)
+
     // Monta URL de acesso
     const url = `/${uploadDir}/${storedName}`
 
@@ -116,22 +120,49 @@ export class MediaService<ServiceParams extends MediaParams = MediaParams> exten
     } as Media
   }
 
-  // Salva imagem a partir de dados base64
+  // Salva arquivo a partir de dados base64 (imagem ou audio)
   async saveFromBase64(
     base64Data: string,
     originalName: string,
     userId: number,
     source: 'upload' | 'ai-generated' = 'ai-generated'
   ): Promise<Media> {
-    // Remove prefixo data:image/xxx;base64, se presente
-    const base64Clean = base64Data.replace(/^data:image\/\w+;base64,/, '')
+    console.log(
+      `[MediaService] saveFromBase64: originalName=${originalName}, base64Length=${base64Data.length}`
+    )
+
+    // Remove prefixo data:xxx/yyy;base64, se presente (suporta imagem e audio)
+    const base64Clean = base64Data.replace(/^data:[^;]+;base64,/, '')
     const buffer = Buffer.from(base64Clean, 'base64')
 
-    // Detecta tipo MIME do base64 ou usa padrao
-    let mimeType = 'image/png'
-    const mimeMatch = base64Data.match(/^data:(image\/\w+);base64,/)
+    console.log(`[MediaService] Buffer criado: ${buffer.length} bytes`)
+
+    // Detecta tipo MIME do base64 ou infere do nome do arquivo
+    let mimeType = 'application/octet-stream'
+
+    // Tenta extrair do prefixo data:
+    const mimeMatch = base64Data.match(/^data:([^;]+);base64,/)
     if (mimeMatch) {
       mimeType = mimeMatch[1]
+    } else {
+      // Infere do nome do arquivo
+      const ext = originalName.split('.').pop()?.toLowerCase()
+      const mimeMap: Record<string, string> = {
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        webp: 'image/webp',
+        svg: 'image/svg+xml',
+        wav: 'audio/wav',
+        mp3: 'audio/mpeg',
+        ogg: 'audio/ogg',
+        flac: 'audio/flac',
+        m4a: 'audio/mp4',
+        mp4: 'video/mp4',
+        webm: 'video/webm'
+      }
+      mimeType = mimeMap[ext || ''] || 'application/octet-stream'
     }
 
     // Processa e salva o arquivo

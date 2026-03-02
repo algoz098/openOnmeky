@@ -91,6 +91,9 @@ export function useAIProviders() {
     if (agentType === 'videoGeneration') {
       return models.filter(m => m.type === 'video')
     }
+    if (agentType === 'musicGeneration') {
+      return models.filter(m => (m.type as string) === 'audio')
+    }
     // Para outros agentes, retornar modelos de texto
     return models.filter(m => m.type === 'text' || m.type === 'unknown')
   }
@@ -98,9 +101,10 @@ export function useAIProviders() {
   // Obter providers que suportam um tipo de agente
   const getProvidersForAgent = (agentType: AgentType): AIProviderInfo[] => {
     return providers.value.filter(p => {
-      const caps = PROVIDER_CAPABILITIES[p.name as AIProviderName] || { text: true, image: false, video: false }
+      const caps = PROVIDER_CAPABILITIES[p.name as AIProviderName] || { text: true, image: false, video: false, audio: false }
       if (agentType === 'imageGeneration' || agentType === 'textOverlay') return caps.image
       if (agentType === 'videoGeneration') return caps.video
+      if (agentType === 'musicGeneration') return caps.audio
       return caps.text
     })
   }

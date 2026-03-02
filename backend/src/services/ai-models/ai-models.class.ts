@@ -63,7 +63,13 @@ export class AIModelsService implements ServiceInterface<AIModelInfo, unknown, A
    */
   private buildProviderConfig<T extends AIProviderName>(
     providerId: T,
-    settings: { apiKey?: string; baseUrl?: string; organizationId?: string }
+    settings: {
+      apiKey?: string
+      baseUrl?: string
+      organizationId?: string
+      projectId?: string
+      location?: string
+    }
   ): ProviderConfigMap[T] {
     switch (providerId) {
       case 'openai':
@@ -74,7 +80,10 @@ export class AIModelsService implements ServiceInterface<AIModelInfo, unknown, A
         } as ProviderConfigMap[T]
       case 'google':
         return {
-          apiKey: settings.apiKey!
+          apiKey: settings.apiKey!,
+          baseUrl: settings.baseUrl,
+          projectId: settings.projectId,
+          location: settings.location
         } as ProviderConfigMap[T]
       case 'ollama':
         return {

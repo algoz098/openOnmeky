@@ -284,14 +284,19 @@ export class TextOverlayAgent extends BaseAgent {
       }
     }
 
-    // Executa todos os overlays em PARALELO
-    console.log(`[TextOverlayAgent] Iniciando processamento paralelo de ${totalSlides} slides`)
+    // Executa todos os overlays SEQUENCIALMENTE para evitar Headers Timeout Error em requests massivos de imagem
+    console.log(`[TextOverlayAgent] Iniciando processamento sequencial de ${totalSlides} slides`)
     const startTime = Date.now()
 
-    const results = await Promise.all(input.slides.map((slide, idx) => processSlide(slide, idx)))
+    const results = []
+    for (let idx = 0; idx < input.slides.length; idx++) {
+      const slide = input.slides[idx]
+      const result = await processSlide(slide, idx)
+      results.push(result)
+    }
 
     const elapsedTime = Date.now() - startTime
-    console.log(`[TextOverlayAgent] Processamento paralelo concluido em ${elapsedTime}ms`)
+    console.log(`[TextOverlayAgent] Processamento sequencial concluido em ${elapsedTime}ms`)
 
     // Extrai slides e execucoes dos resultados (mantendo ordem original)
     const updatedSlides = results.map(r => r.slide)

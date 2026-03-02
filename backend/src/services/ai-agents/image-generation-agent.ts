@@ -23,7 +23,7 @@ interface ImageGenerationInput {
 
 export class ImageGenerationAgent extends BaseAgent {
   constructor(app: Application) {
-    super(app, 'imageGeneration', 'imagen-4.0-generate-001')
+    super(app, 'imageGeneration', 'nano-banana-pro')
   }
 
   async execute(
@@ -39,7 +39,7 @@ export class ImageGenerationAgent extends BaseAgent {
 
     // Obtem modelo preferido da configuracao
     const model = this.getModel(context)
-    console.log('[ImageGenerationAgent] Modelo preferido:', model)
+    console.log('[ImageGenerationAgent] Modelo selecionado:', model)
 
     // Obtem servico de medias para salvar imagens localmente
     const mediaService = this.app.service('medias') as MediaService
@@ -249,14 +249,19 @@ Create a scroll-stopping, professional image ready for ${context.platform}. High
       }
     }
 
-    // Executa todas as geracoes de imagem em PARALELO
-    console.log(`[ImageGenerationAgent] Iniciando geracao paralela de ${totalSlides} imagens`)
+    // Executa todas as geracoes de imagem SEQUENCIALMENTE para evitar Headers Timeout Error (503) no provider (ex: Google AI limitando conexoes simultaneas)
+    console.log(`[ImageGenerationAgent] Iniciando geracao sequencial de ${totalSlides} imagens`)
     const startTime = Date.now()
 
-    const results = await Promise.all(input.slides.map((slide, idx) => processSlide(slide, idx)))
+    const results = []
+    for (let idx = 0; idx < input.slides.length; idx++) {
+      const slide = input.slides[idx]
+      const result = await processSlide(slide, idx)
+      results.push(result)
+    }
 
     const elapsedTime = Date.now() - startTime
-    console.log(`[ImageGenerationAgent] Geracao paralela concluida em ${elapsedTime}ms`)
+    console.log(`[ImageGenerationAgent] Geracao sequencial concluida em ${elapsedTime}ms`)
 
     // Extrai slides e execucoes dos resultados (mantendo ordem original)
     const updatedSlides = results.map(r => r.slide)

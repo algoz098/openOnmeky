@@ -7,7 +7,14 @@ import { dataValidator } from '../../validators'
 import type { AIService } from './ai.class'
 
 // Tipos de operacao suportados
-export const aiOperationTypes = ['generate', 'rewrite', 'adapt', 'suggest-hashtags', 'carousel'] as const
+export const aiOperationTypes = [
+  'generate',
+  'rewrite',
+  'adapt',
+  'suggest-hashtags',
+  'carousel',
+  'music-generation'
+] as const
 export type AIOperationType = (typeof aiOperationTypes)[number]
 
 // Providers disponiveis
@@ -83,6 +90,27 @@ export const aiDataSchema = Type.Object(
       Type.Union([Type.Literal('1:1'), Type.Literal('4:5'), Type.Literal('9:16'), Type.Literal('16:9')], {
         description: 'Proporcao da imagem para o carousel'
       })
+    ),
+    // Opcoes para geracao de musica
+    musicOptions: Type.Optional(
+      Type.Object(
+        {
+          genre: Type.Optional(Type.String({ description: 'Genero musical (ex: pop, electronic, jazz)' })),
+          mood: Type.Optional(Type.String({ description: 'Mood/atmosfera (ex: energetic, calm, dramatic)' })),
+          tempo: Type.Optional(Type.Number({ description: 'Tempo em BPM (ex: 120)' })),
+          customPrompt: Type.Optional(Type.String({ description: 'Prompt personalizado para a musica' })),
+          // Contexto do post para geracao contextualizada
+          postContent: Type.Optional(Type.String({ description: 'Texto do post' })),
+          briefing: Type.Optional(Type.Any({ description: 'Briefing criativo gerado' })),
+          slideTexts: Type.Optional(
+            Type.Array(Type.String(), { description: 'Textos dos slides do carousel' })
+          ),
+          slideDescriptions: Type.Optional(
+            Type.Array(Type.String(), { description: 'Descricoes das imagens dos slides' })
+          )
+        },
+        { description: 'Opcoes para geracao de musica via Lyria' }
+      )
     ),
     // Flags para testes
     _forceError: Type.Optional(Type.Boolean()),
@@ -259,7 +287,16 @@ export const aiResultSchema = Type.Object(
     slides: Type.Optional(Type.Array(carouselSlideSchema, { description: 'Slides do carrousel' })),
     briefing: Type.Optional(creativeBriefingSchema),
     postId: Type.Optional(Type.Number({ description: 'ID do post criado' })),
-    logId: Type.Optional(Type.Number({ description: 'ID do log de geracao' }))
+    logId: Type.Optional(Type.Number({ description: 'ID do log de geracao' })),
+    // Campos para geracao de musica
+    audio: Type.Optional(
+      Type.Object({
+        url: Type.String({ description: 'URL do arquivo de audio gerado' }),
+        format: Type.String({ description: 'Formato do audio (ex: wav, mp3)' }),
+        durationSeconds: Type.Number({ description: 'Duracao em segundos' }),
+        prompt: Type.String({ description: 'Prompt usado para gerar a musica' })
+      })
+    )
   },
   { $id: 'AIResult', additionalProperties: false }
 )

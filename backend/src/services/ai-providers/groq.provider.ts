@@ -20,6 +20,7 @@ export class GroqProvider extends BaseAIProvider {
     text: true,
     image: false,
     video: false,
+    audio: false,
     embeddings: false,
     models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it']
   }
@@ -112,6 +113,7 @@ export class GroqProvider extends BaseAIProvider {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
+      console.error('[GroqProvider] Erro ao gerar texto:', JSON.stringify(error, null, 2))
       throw this.handleError(error, response.status)
     }
 
@@ -124,10 +126,10 @@ export class GroqProvider extends BaseAIProvider {
       provider: this.name,
       usage: data.usage
         ? {
-            promptTokens: data.usage.prompt_tokens || 0,
-            completionTokens: data.usage.completion_tokens || 0,
-            totalTokens: data.usage.total_tokens || 0
-          }
+          promptTokens: data.usage.prompt_tokens || 0,
+          completionTokens: data.usage.completion_tokens || 0,
+          totalTokens: data.usage.total_tokens || 0
+        }
         : undefined,
       finishReason: choice?.finish_reason
     }
@@ -144,13 +146,13 @@ export class GroqProvider extends BaseAIProvider {
     const message = error?.error?.message || 'Erro ao comunicar com Groq'
 
     if (status === 401) {
-      return new Error('Servico de IA indisponivel. Verifique a configuracao.')
+      return new Error(`Servico de IA indisponivel. Verifique a configuracao. (${message})`)
     }
     if (status === 429) {
-      return new Error('Limite de requisicoes excedido. Tente novamente mais tarde.')
+      return new Error(`Limite de requisicoes excedido. Tente novamente mais tarde. (${message})`)
     }
     if (status >= 500) {
-      return new Error('Servico de IA indisponivel. Tente novamente mais tarde.')
+      return new Error(`Servico de IA indisponivel. Tente novamente mais tarde. (${message})`)
     }
 
     return new Error(message)

@@ -264,6 +264,7 @@ const form = reactive({
     analysis: { provider: 'openai', model: 'o4-mini' },
     imageGeneration: { provider: 'openai', model: 'dall-e-3' },
     textOverlay: { provider: 'google', model: 'gemini-2.0-flash-exp-image-generation' },
+    musicGeneration: { provider: 'google', model: 'lyria-realtime-exp' },
     videoGeneration: { provider: 'google', model: 'veo-3.0-generate-preview' },
     creativeDirection: { provider: 'openai', model: 'gpt-5.3-codex' },
     compliance: { provider: 'openai', model: 'o3' }
@@ -364,8 +365,39 @@ const handleSubmit = async () => {
   if (!valid) return
   saving.value = true
   try {
-    if (isEdit.value) await updateBrand(brandId.value!, form)
-    else await createBrand(form)
+    // Limpar campos vazios/invalidos do aiConfig antes de salvar
+    const cleanedForm = { ...form }
+    if (cleanedForm.aiConfig) {
+      for (const key of Object.keys(cleanedForm.aiConfig) as AgentType[]) {
+        const config = cleanedForm.aiConfig[key]
+        if (config) {
+          // Converter temperature para number ou remover se invalido
+          if (config.temperature as any === '' || config.temperature === undefined || config.temperature === null) {
+            delete config.temperature
+          } else if (typeof config.temperature === 'string') {
+            const parsed = parseFloat(config.temperature)
+            if (!isNaN(parsed)) {
+              config.temperature = parsed
+            } else {
+              delete config.temperature
+            }
+          }
+          // Converter maxTokens para number ou remover se invalido
+          if (config.maxTokens as any === '' || config.maxTokens === undefined || config.maxTokens === null) {
+            delete config.maxTokens
+          } else if (typeof config.maxTokens === 'string') {
+            const parsed = parseInt(config.maxTokens, 10)
+            if (!isNaN(parsed)) {
+              config.maxTokens = parsed
+            } else {
+              delete config.maxTokens
+            }
+          }
+        }
+      }
+    }
+    if (isEdit.value) await updateBrand(brandId.value!, cleanedForm)
+    else await createBrand(cleanedForm)
     await router.push('/brands')
   } finally { saving.value = false }
 }
@@ -380,6 +412,21 @@ const populateFormFromBrand = async (brand: Brand) => {
   for (const agent of aiAgents) {
     if (!form.aiConfig[agent.key]) {
       form.aiConfig[agent.key] = { provider: 'openai', model: '' }
+    } else {
+      // Converter temperature e maxTokens para number se vierem como string do backend
+      const config = form.aiConfig[agent.key]
+      if (config) {
+        if (typeof config.temperature === 'string') {
+          const parsed = parseFloat(config.temperature)
+          if (isNaN(parsed)) delete config.temperature
+          else config.temperature = parsed
+        }
+        if (typeof config.maxTokens === 'string') {
+          const parsed = parseInt(config.maxTokens, 10)
+          if (isNaN(parsed)) delete config.maxTokens
+          else config.maxTokens = parsed
+        }
+      }
     }
   }
 

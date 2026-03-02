@@ -79,6 +79,7 @@
     "@feathersjs/socketio": "^5.0.40",
     "@feathersjs/transport-commons": "^5.0.40",
     "@feathersjs/typebox": "^5.0.40",
+    "@google/genai": "^1.43.0",
     "@koa/multer": "^4.0.0",
     "knex": "^3.1.0",
     "koa-helmet": "^9.0.0",

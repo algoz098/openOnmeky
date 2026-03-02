@@ -22,6 +22,7 @@ export class OllamaProvider extends BaseAIProvider {
     text: true,
     image: true,
     video: false,
+    audio: false,
     embeddings: true,
     models: ['llama3.2', 'llama3.1', 'mistral', 'mixtral', 'codellama', 'llava']
   }

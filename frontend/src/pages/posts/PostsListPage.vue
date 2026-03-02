@@ -515,7 +515,7 @@ const cancelGeneration = async (post: Post) => {
   try {
     await updatePost(post.id, {
       aiState: 'idle',
-      activeLogId: null
+      activeLogId: null as any
     })
     $q.notify({
       type: 'positive',

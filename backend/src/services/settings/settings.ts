@@ -45,8 +45,11 @@ export const settings = (app: Application) => {
     'settings/ai',
     {
       async patch(provider: string, data: any, params: any) {
+        console.log('[settings/ai] PATCH called with provider:', provider, 'data:', JSON.stringify(data))
         const service = app.service(settingsPath) as SettingsService
-        return service.updateProvider(provider as any, data)
+        const result = await service.updateProvider(provider as any, data)
+        console.log('[settings/ai] PATCH result:', JSON.stringify(result))
+        return result
       },
       async find(params: any) {
         const service = app.service(settingsPath) as SettingsService
@@ -61,7 +64,10 @@ export const settings = (app: Application) => {
 
   app.service('settings/ai').hooks({
     around: {
-      all: [authenticate('jwt'), requireAdmin]
+      all: [authenticate('jwt')]
+    },
+    before: {
+      all: [requireAdmin]
     }
   })
 
@@ -82,9 +88,10 @@ export const settings = (app: Application) => {
 
   app.service('settings/ai/default').hooks({
     around: {
-      all: [authenticate('jwt'), requireAdmin]
+      all: [authenticate('jwt')]
     },
     before: {
+      all: [requireAdmin],
       create: [schemaHooks.validateData(defaultProviderDataValidator)]
     }
   })
@@ -106,7 +113,10 @@ export const settings = (app: Application) => {
 
   app.service('settings/ai/global').hooks({
     around: {
-      all: [authenticate('jwt'), requireAdmin]
+      all: [authenticate('jwt')]
+    },
+    before: {
+      all: [requireAdmin]
     }
   })
 
@@ -116,26 +126,36 @@ export const settings = (app: Application) => {
     {
       // GET - Retorna configuracoes de pricing
       async find() {
+        console.log('[settings/ai/pricing] FIND called')
         const service = app.service(settingsPath) as SettingsService
-        return service.getPricingSettings()
+        const result = await service.getPricingSettings()
+        console.log('[settings/ai/pricing] FIND result has keys:', result ? Object.keys(result) : 'null')
+        return result
       },
       // PATCH /:provider/:model - Atualiza preco de um modelo
       async patch(id: string, data: any) {
+        console.log('[settings/ai/pricing] PATCH called with id:', id, 'data:', JSON.stringify(data))
         const service = app.service(settingsPath) as SettingsService
         // id pode ser "provider/model" ou apenas "provider"
         const parts = id.split('/')
+        let result
         if (parts.length === 2) {
-          return service.updateModelPricing(parts[0], parts[1], data)
+          result = await service.updateModelPricing(parts[0], parts[1], data)
         } else {
           // Atualiza todos os modelos de um provider
-          return service.updateProviderPricing(id, data)
+          result = await service.updateProviderPricing(id, data)
         }
+        console.log('[settings/ai/pricing] PATCH result has keys:', result ? Object.keys(result) : 'null')
+        return result
       },
       // POST /reset - Restaura precos padrao
       async create(data: any) {
+        console.log('[settings/ai/pricing] CREATE called with data:', JSON.stringify(data))
         if (data?.action === 'reset') {
           const service = app.service(settingsPath) as SettingsService
-          return service.resetPricingToDefaults()
+          const result = await service.resetPricingToDefaults()
+          console.log('[settings/ai/pricing] CREATE result has keys:', result ? Object.keys(result) : 'null')
+          return result
         }
         throw new Error('Acao invalida')
       }
@@ -148,7 +168,10 @@ export const settings = (app: Application) => {
 
   app.service('settings/ai/pricing').hooks({
     around: {
-      all: [authenticate('jwt'), requireAdmin]
+      all: [authenticate('jwt')]
+    },
+    before: {
+      all: [requireAdmin]
     }
   })
 }

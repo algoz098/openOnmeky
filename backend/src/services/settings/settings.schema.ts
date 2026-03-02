@@ -16,7 +16,10 @@ export const aiProviderSettingSchema = Type.Object({
   apiKey: Type.Optional(Type.String()),
   baseUrl: Type.Optional(Type.String()),
   organizationId: Type.Optional(Type.String()),
-  defaultModel: Type.Optional(Type.String())
+  defaultModel: Type.Optional(Type.String()),
+  // Campos especificos para Google Cloud (Vertex AI / Lyria)
+  projectId: Type.Optional(Type.String({ description: 'Google Cloud Project ID para Vertex AI' })),
+  location: Type.Optional(Type.String({ description: 'Localizacao do Vertex AI (ex: us-central1)' }))
 })
 export type AIProviderSetting = Static<typeof aiProviderSettingSchema>
 

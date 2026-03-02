@@ -9,6 +9,7 @@ export type AgentType =
   | 'textCreation'
   | 'imageGeneration'
   | 'textOverlay'
+  | 'musicGeneration'
   | 'compliance'
 
 // Configuracao de agente por tipo (espelha o schema da marca)
@@ -29,6 +30,7 @@ export interface BrandAIConfig {
   imageGeneration?: AIAgentConfig
   textOverlay?: AIAgentConfig
   videoGeneration?: AIAgentConfig
+  musicGeneration?: AIAgentConfig
   creativeDirection?: AIAgentConfig
   compliance?: AIAgentConfig
   // Campos legados

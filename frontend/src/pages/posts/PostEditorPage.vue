@@ -195,6 +195,69 @@
           </q-card-section>
         </q-card>
 
+        <!-- Trilha Sonora (quando agente configurado e carousel gerado) -->
+        <q-card v-if="hasMusicGeneration && carouselSlides.length > 0" flat bordered class="q-mb-md">
+          <q-card-section>
+            <div class="row items-center q-mb-md">
+              <div class="text-h6">
+                <q-icon name="music_note" class="q-mr-sm" color="deep-purple" />
+                Trilha Sonora
+              </div>
+              <q-space />
+              <q-chip dense color="deep-purple" text-color="white" size="sm">
+                Google Lyria
+              </q-chip>
+            </div>
+
+            <!-- Player de audio (quando gerado) -->
+            <AudioPlayer
+              v-if="generatedAudio?.url"
+              :audio-url="getFullMediaUrl(generatedAudio.url)"
+              :format="generatedAudio.format"
+              :duration-seconds="generatedAudio.durationSeconds"
+              :prompt="generatedAudio.prompt"
+              @regenerate="handleRegenerateMusic"
+            />
+
+            <!-- Opcoes e botao de gerar (quando nao tem audio) -->
+            <div v-else>
+              <div class="row q-col-gutter-sm q-mb-md">
+                <div class="col-6">
+                  <q-select
+                    v-model="musicOptions.genre"
+                    :options="['pop', 'electronic', 'jazz', 'classical', 'ambient', 'rock', 'hip-hop', 'r&b']"
+                    label="Genero (opcional)"
+                    outlined
+                    dense
+                    clearable
+                  />
+                </div>
+                <div class="col-6">
+                  <q-select
+                    v-model="musicOptions.mood"
+                    :options="['energetic', 'calm', 'happy', 'dramatic', 'inspiring', 'melancholic', 'upbeat']"
+                    label="Mood (opcional)"
+                    outlined
+                    dense
+                    clearable
+                  />
+                </div>
+              </div>
+              <q-btn
+                color="deep-purple"
+                icon="music_note"
+                label="Gerar Trilha Sonora"
+                :loading="generatingMusic || musicAiState === 'loading'"
+                :disable="!form.brandId || musicAiState === 'loading'"
+                @click="handleGenerateMusic"
+              />
+              <div class="text-caption text-grey-6 q-mt-sm">
+                Gera 30 segundos de musica instrumental usando Google Lyria
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+
         <!-- Agendamento -->
         <q-card flat bordered>
           <q-card-section>
@@ -371,11 +434,12 @@ import { usePlatforms } from 'src/composables/use-platforms'
 import { useAI } from 'src/composables/use-ai'
 import { useMedia } from 'src/composables/use-media'
 import { usePostVersions } from 'src/composables/use-post-versions'
-import { host, api } from 'src/api'
+import { host, api, feathersClient } from 'src/api'
 import MediaPicker, { type SelectedMedia } from 'src/components/MediaPicker.vue'
 import SocialPreview from 'src/components/SocialPreview.vue'
 import AIUsageBadge from 'src/components/AIUsageBadge.vue'
-import type { Brand, Post, AIImage, SlidePurpose, CarouselSlide, AIMode, AIType, AITone, AspectRatio, CreativeBriefing, AIUsageInfo, AIExecution, PostVersion } from 'src/types'
+import AudioPlayer from 'src/components/AudioPlayer.vue'
+import type { Brand, Post, AIImage, SlidePurpose, CarouselSlide, AIMode, AIType, AITone, AspectRatio, CreativeBriefing, AIUsageInfo, AIExecution, PostVersion, AIAudioResult, MusicGenerationOptions } from 'src/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -383,7 +447,7 @@ const $q = useQuasar()
 const { getPost, createPost, updatePost } = usePosts()
 const { brands, fetchBrands, getBrand, currentBrand } = useBrands()
 const { platforms, fetchPlatforms, getCharLimit } = usePlatforms()
-const { generateText, generateCarousel, rewrite, suggestHashtags, regenerateSlideImage, progress, clearProgress, reconnectToProgress, disconnectProgress } = useAI()
+const { generateText, generateCarousel, generateMusic, rewrite, suggestHashtags, regenerateSlideImage, progress, clearProgress, reconnectToProgress, disconnectProgress } = useAI()
 const { fileToAIImage, mediaToAIImage } = useMedia()
 const { fetchVersions, getVersionsForPost, applyVersion, loading: loadingVersions } = usePostVersions()
 
@@ -396,7 +460,13 @@ const getFullMediaUrl = (url: string): string => {
 const postId = computed(() => route.params.id ? Number(route.params.id) : null)
 const isEdit = computed(() => !!postId.value)
 
-const form = reactive({ brandId: null as number | null, platform: 'instagram', content: '', status: 'draft', scheduledAt: '', mediaUrls: [] as string[], aiPrompt: '' })
+interface PostForm extends Omit<Partial<Post>, 'platform' | 'content' | 'mediaUrls'> {
+  platform: string;
+  content: string;
+  mediaUrls: string[];
+}
+
+const form = reactive<PostForm>({ brandId: undefined as any, platform: 'instagram', content: '', status: 'draft', scheduledAt: '', mediaUrls: [], aiPrompt: '' })
 const selectedBrand = ref<Brand | null>(null)
 const loadingPage = ref(true)
 const loadingBrand = ref(false)
@@ -407,11 +477,20 @@ const suggestingTags = ref(false)
 const carouselSlides = ref<CarouselSlide[]>([])
 const creativeBriefing = ref<CreativeBriefing | undefined>(undefined)
 const derivingImage = ref(false)
+
+// Estado para geracao de musica
+const generatingMusic = ref(false)
+const generatedAudio = ref<AIAudioResult | null>(null)
+const musicOptions = ref<MusicGenerationOptions>({
+  genre: '',
+  mood: ''
+})
 const selectedSlideForDerive = ref<number | null>(null)
 const regeneratingSlideIndex = ref<number | null>(null)
 
 // Estado do post carregado (para verificar aiState)
 const postAiState = ref<'idle' | 'loading' | 'error'>('idle')
+const musicAiState = ref<'idle' | 'loading' | 'completed' | 'error'>('idle')
 
 // Computed para verificar se pode gerar conteudo
 const canGenerate = computed(() => {
@@ -499,6 +578,23 @@ watch(progress, async (newProgress) => {
         }
         if (updatedPost.creativeBriefing) {
           creativeBriefing.value = updatedPost.creativeBriefing
+        }
+        // Atualiza trilha sonora gerada
+        // Pode vir como string JSON do SQLite
+        if (updatedPost.generatedAudio) {
+          let audio: any = updatedPost.generatedAudio
+          // Se for string e parecer JSON valido, faz parse
+          if (typeof audio === 'string' && audio.startsWith('{')) {
+            try {
+              audio = JSON.parse(audio)
+            } catch {
+              audio = null
+            }
+          }
+          // Valida que e um objeto com url
+          if (audio && typeof audio === 'object' && 'url' in audio && audio.url) {
+            generatedAudio.value = audio as AIAudioResult
+          }
         }
 
         // Recarrega versoes
@@ -692,6 +788,67 @@ const updateCharLimit = () => { charLimit.value = getCharLimit(form.platform) ||
 const clearCarousel = () => {
   carouselSlides.value = []
   creativeBriefing.value = undefined
+  generatedAudio.value = null
+}
+
+// Verifica se a marca tem o agente de musicGeneration configurado
+const hasMusicGeneration = computed(() => {
+  if (!selectedBrand.value) return false
+  const brand = selectedBrand.value as Brand & { aiConfig?: { musicGeneration?: { provider?: string } } }
+  return !!brand.aiConfig?.musicGeneration?.provider
+})
+
+// Gera trilha sonora usando o agente de musica com contexto completo
+const handleGenerateMusic = async () => {
+  if (!form.brandId || !postId.value) {
+    if (!postId.value) {
+      $q.notify({ type: 'warning', message: 'Salve o post primeiro para gerar a trilha sonora.' })
+    }
+    return
+  }
+
+  generatingMusic.value = true
+  musicAiState.value = 'loading'
+  
+  try {
+    // Extrai textos e descricoes dos slides para contexto
+    const slideTexts = carouselSlides.value
+      .filter(s => s.text)
+      .map(s => s.text as string)
+    const slideDescriptions = carouselSlides.value
+      .filter(s => s.imagePrompt)
+      .map(s => s.imagePrompt as string)
+
+    // Monta opcoes com contexto completo do post
+    const optionsWithContext: MusicGenerationOptions = {
+      ...musicOptions.value,
+      postContent: form.content,
+      slideTexts,
+      slideDescriptions,
+    }
+    if (creativeBriefing.value) optionsWithContext.briefing = creativeBriefing.value
+    if (postId.value) optionsWithContext.postId = postId.value
+
+    const result = await generateMusic(
+      form.brandId,
+      optionsWithContext,
+      form.platform
+    )
+    if (result) {
+      $q.notify({ type: 'info', message: 'Geracao de musica em andamento...' })
+    }
+  } catch (err) {
+    musicAiState.value = 'error'
+    $q.notify({ type: 'negative', message: 'Erro ao iniciar geracao de musica' })
+  } finally {
+    generatingMusic.value = false
+  }
+}
+
+// Regenera a trilha sonora
+const handleRegenerateMusic = async () => {
+  generatedAudio.value = null
+  await handleGenerateMusic()
 }
 
 // Adiciona uma nova execucao de IA e atualiza os totais acumulados
@@ -1069,6 +1226,11 @@ const savePost = async () => {
       }
     }
 
+    // Salvar trilha sonora gerada se existir
+    if (generatedAudio.value) {
+      postData.generatedAudio = generatedAudio.value
+    }
+
     // Salvar dados de uso de IA (ultima geracao - compatibilidade)
     if (lastUsage.value) {
       postData.lastUsagePromptTokens = lastUsage.value.promptTokens
@@ -1150,6 +1312,25 @@ onMounted(async () => {
       if (post.creativeBriefing) {
         creativeBriefing.value = post.creativeBriefing
       }
+      // Restaurar trilha sonora gerada se existir
+      // Pode vir como string JSON do SQLite, entao verifica e faz parse se necessario
+      if (post.generatedAudio) {
+        let audio: any = post.generatedAudio
+        // Se for string e parecer JSON valido, faz parse
+        if (typeof audio === 'string' && audio.startsWith('{')) {
+          try {
+            audio = JSON.parse(audio)
+          } catch {
+            audio = null
+          }
+        }
+        // Valida que e um objeto com url
+        if (audio && typeof audio === 'object' && 'url' in audio && audio.url) {
+          generatedAudio.value = audio as AIAudioResult
+        }
+      }
+      
+      musicAiState.value = post.musicAiState || 'idle'
 
       // Restaurar dados de multiplas execucoes de IA (acumuladas) - novos campos
       // Garante que aiExecutions e um array (pode vir como string JSON do SQLite)
@@ -1251,6 +1432,32 @@ onMounted(async () => {
   } finally {
     loadingPage.value = false
   }
+
+  // Ouvir modificacoes no post (via websocket) para atualizacao de musica
+  const postsService = feathersClient.service('posts')
+  postsService.on('patched', (post: Post) => {
+    if (postId.value === post.id) {
+      // Atualiza o estado da musica gerada em background
+      if (post.musicAiState !== undefined && post.musicAiState !== musicAiState.value) {
+        musicAiState.value = post.musicAiState
+        
+        if (post.musicAiState === 'completed' && post.generatedAudio) {
+          $q.notify({ type: 'positive', message: 'Trilha sonora gerada com sucesso!' })
+          
+          let audio: any = post.generatedAudio
+          if (typeof audio === 'string' && audio.startsWith('{')) {
+            try { audio = JSON.parse(audio) } catch { audio = null }
+          }
+          if (audio && typeof audio === 'object' && 'url' in audio && audio.url) {
+            generatedAudio.value = audio as AIAudioResult
+            form.generatedAudio = audio as AIAudioResult
+          }
+        } else if (post.musicAiState === 'error') {
+          $q.notify({ type: 'negative', message: 'Erro na geracao da trilha sonora.' })
+        }
+      }
+    }
+  })
 })
 
 // Limpa conexao de progresso ao desmontar o componente

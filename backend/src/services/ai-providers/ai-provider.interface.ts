@@ -11,6 +11,7 @@ export type AgentType =
   | 'analysis' // Analise de sentimento, scoring
   | 'imageGeneration' // Geracao de imagens e criativos
   | 'videoGeneration' // Geracao de videos
+  | 'musicGeneration' // Geracao de trilhas sonoras
   | 'creativeDirection' // Briefing, conceito, narrativa
   | 'compliance' // Verificacao de diretrizes da marca
 
@@ -58,6 +59,13 @@ export const recommendedModels: Record<AgentType, Record<AIProviderName, string[
     openai: [],
     anthropic: [],
     google: ['veo-3.0-generate-preview', 'veo-2'],
+    groq: [],
+    ollama: []
+  },
+  musicGeneration: {
+    openai: [],
+    anthropic: [],
+    google: ['lyria-realtime-exp'],
     groq: [],
     ollama: []
   },
@@ -154,6 +162,32 @@ export interface GenerateVideoResult {
   provider: AIProviderName
 }
 
+export interface GenerateAudioOptions {
+  prompt: string
+  model?: string
+  /** Duracao do audio em segundos (padrao: 30) */
+  duration?: number
+  /** Genero ou estilo musical (ex: 'ambient', 'upbeat', 'cinematic') */
+  genre?: string
+  /** Tempo em BPM (batidas por minuto) */
+  tempo?: number
+  /** Mood/humor da musica (ex: 'happy', 'melancholic', 'energetic') */
+  mood?: string
+}
+
+export interface GenerateAudioResult {
+  /** URL do audio gerado (se disponivel) */
+  audioUrl?: string
+  /** Audio em base64 (se disponivel) */
+  audioBase64?: string
+  /** Formato do audio (ex: 'mp3', 'wav') */
+  format?: string
+  /** Duracao real do audio gerado em segundos */
+  durationSeconds?: number
+  model: string
+  provider: AIProviderName
+}
+
 export interface AIProviderConfig {
   apiKey?: string
   baseUrl?: string
@@ -166,6 +200,7 @@ export interface AIProviderCapabilities {
   text: boolean
   image: boolean
   video: boolean
+  audio: boolean
   embeddings: boolean
   models: string[]
 }
@@ -174,7 +209,7 @@ export interface AIProviderCapabilities {
 export interface AIModelInfo {
   id: string
   name: string
-  type: 'text' | 'image' | 'video' | 'embedding' | 'unknown'
+  type: 'text' | 'image' | 'video' | 'audio' | 'embedding' | 'unknown'
   contextWindow?: number
   maxOutputTokens?: number
 }
@@ -213,6 +248,11 @@ export interface AIProvider {
    * Gera video ou roteiro de video (se suportado pelo provider)
    */
   generateVideo?(options: GenerateVideoOptions): Promise<GenerateVideoResult>
+
+  /**
+   * Gera audio/musica (se suportado pelo provider)
+   */
+  generateAudio?(options: GenerateAudioOptions): Promise<GenerateAudioResult>
 }
 
 /**
@@ -249,5 +289,9 @@ export abstract class BaseAIProvider implements AIProvider {
 
   async generateVideo(_options: GenerateVideoOptions): Promise<GenerateVideoResult> {
     throw new Error(`Provider ${this.name} does not support video generation`)
+  }
+
+  async generateAudio(_options: GenerateAudioOptions): Promise<GenerateAudioResult> {
+    throw new Error(`Provider ${this.name} does not support audio generation`)
   }
 }

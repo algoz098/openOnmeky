@@ -18,14 +18,15 @@ export interface AIProviderCapabilities {
   text: boolean
   image: boolean
   video: boolean
+  audio: boolean
 }
 
 export const PROVIDER_CAPABILITIES: Record<AIProviderName, AIProviderCapabilities> = {
-  openai: { text: true, image: true, video: false },
-  google: { text: true, image: true, video: true },
-  anthropic: { text: true, image: false, video: false },
-  ollama: { text: true, image: true, video: false },
-  groq: { text: true, image: false, video: false }
+  openai: { text: true, image: true, video: false, audio: false },
+  google: { text: true, image: true, video: true, audio: true },
+  anthropic: { text: true, image: false, video: false, audio: false },
+  ollama: { text: true, image: true, video: false, audio: false },
+  groq: { text: true, image: false, video: false, audio: false }
 }
 
 // Tipos de agentes de IA disponiveis
@@ -36,6 +37,7 @@ export type AgentType =
   | 'analysis'
   | 'imageGeneration'
   | 'textOverlay'
+  | 'musicGeneration'
   | 'videoGeneration'
   | 'creativeDirection'
   | 'compliance'
@@ -57,6 +59,7 @@ export interface BrandAIConfig {
   analysis?: AIAgentConfig // Analise de sentimento, scoring
   imageGeneration?: AIAgentConfig // Geracao de imagens e criativos
   textOverlay?: AIAgentConfig // Adicao de texto sobre imagens (usa modelos de imagem)
+  musicGeneration?: AIAgentConfig // Geracao de trilhas sonoras (Lyria)
   videoGeneration?: AIAgentConfig // Geracao de videos
   creativeDirection?: AIAgentConfig // Briefing, conceito, narrativa
   compliance?: AIAgentConfig // Verificacao de diretrizes da marca
@@ -74,6 +77,7 @@ export interface AgentMetadata {
   icon: string
   supportsImage: boolean
   supportsVideo: boolean
+  supportsAudio: boolean
 }
 
 // Lista de agentes com metadados
@@ -84,7 +88,8 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Analise complexa e planejamento estrategico',
     icon: 'psychology',
     supportsImage: false,
-    supportsVideo: false
+    supportsVideo: false,
+    supportsAudio: false
   },
   {
     key: 'textCreation',
@@ -92,7 +97,8 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Geracao de posts, copys e legendas',
     icon: 'edit_note',
     supportsImage: false,
-    supportsVideo: false
+    supportsVideo: false,
+    supportsAudio: false
   },
   {
     key: 'textAdaptation',
@@ -100,7 +106,8 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Reescrita e adaptacao para plataformas',
     icon: 'transform',
     supportsImage: false,
-    supportsVideo: false
+    supportsVideo: false,
+    supportsAudio: false
   },
   {
     key: 'analysis',
@@ -108,7 +115,8 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Analise de sentimento e scoring de conteudo',
     icon: 'analytics',
     supportsImage: false,
-    supportsVideo: false
+    supportsVideo: false,
+    supportsAudio: false
   },
   {
     key: 'imageGeneration',
@@ -116,7 +124,8 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Criacao de imagens e criativos visuais',
     icon: 'image',
     supportsImage: true,
-    supportsVideo: false
+    supportsVideo: false,
+    supportsAudio: false
   },
   {
     key: 'textOverlay',
@@ -124,7 +133,17 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Adicao de texto sobre imagens geradas',
     icon: 'text_fields',
     supportsImage: true,
-    supportsVideo: false
+    supportsVideo: false,
+    supportsAudio: false
+  },
+  {
+    key: 'musicGeneration',
+    label: 'Geracao de Musica',
+    description: 'Criacao de trilhas sonoras instrumentais (Google Lyria)',
+    icon: 'music_note',
+    supportsImage: false,
+    supportsVideo: false,
+    supportsAudio: true
   },
   {
     key: 'videoGeneration',
@@ -132,7 +151,8 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Criacao de videos e animacoes',
     icon: 'videocam',
     supportsImage: false,
-    supportsVideo: true
+    supportsVideo: true,
+    supportsAudio: false
   },
   {
     key: 'creativeDirection',
@@ -140,7 +160,8 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Briefing, conceito e narrativa',
     icon: 'palette',
     supportsImage: false,
-    supportsVideo: false
+    supportsVideo: false,
+    supportsAudio: false
   },
   {
     key: 'compliance',
@@ -148,7 +169,8 @@ export const AI_AGENTS: AgentMetadata[] = [
     description: 'Verificacao de diretrizes da marca',
     icon: 'verified',
     supportsImage: false,
-    supportsVideo: false
+    supportsVideo: false,
+    supportsAudio: false
   }
 ]
 
@@ -178,6 +200,7 @@ export const AI_CONFIG_PRESETS: AIConfigPreset[] = [
       analysis: { provider: 'openai', model: 'o3' },
       imageGeneration: { provider: 'openai', model: 'dall-e-3' },
       textOverlay: { provider: 'google', model: 'gemini-2.0-flash-exp-image-generation' },
+      musicGeneration: { provider: 'google', model: 'lyria-realtime-exp' },
       videoGeneration: { provider: 'google', model: 'veo-3.0-generate-preview' },
       creativeDirection: { provider: 'openai', model: 'gpt-5.3-codex' },
       compliance: { provider: 'anthropic', model: 'claude-opus-4-6' }
@@ -195,6 +218,7 @@ export const AI_CONFIG_PRESETS: AIConfigPreset[] = [
       analysis: { provider: 'groq', model: 'llama-3.1-8b-instant' },
       imageGeneration: { provider: 'google', model: 'imagen-4.0-ultra-generate-001' },
       textOverlay: { provider: 'google', model: 'gemini-2.0-flash-exp-image-generation' },
+      musicGeneration: { provider: 'google', model: 'lyria-realtime-exp' },
       videoGeneration: { provider: 'google', model: 'veo-3.0-generate-preview' },
       creativeDirection: { provider: 'anthropic', model: 'claude-sonnet-4-6' },
       compliance: { provider: 'google', model: 'gemini-3.1-pro-preview' }
@@ -212,6 +236,7 @@ export const AI_CONFIG_PRESETS: AIConfigPreset[] = [
       analysis: { provider: 'groq', model: 'llama-3.1-8b-instant' },
       imageGeneration: { provider: 'google', model: 'imagen-4.0-ultra-generate-001' },
       textOverlay: { provider: 'google', model: 'gemini-2.0-flash-exp-image-generation' },
+      musicGeneration: { provider: 'google', model: 'lyria-realtime-exp' },
       videoGeneration: { provider: 'google', model: 'veo-2' },
       creativeDirection: { provider: 'groq', model: 'llama-3.3-70b-versatile' },
       compliance: { provider: 'groq', model: 'llama-3.3-70b-versatile' }
@@ -220,16 +245,18 @@ export const AI_CONFIG_PRESETS: AIConfigPreset[] = [
 ]
 
 // Modelos disponiveis por provedor (Atualizado: Fevereiro 2026)
-export const PROVIDER_MODELS: Record<AIProviderName, { text: string[]; image: string[]; video: string[] }> = {
+export const PROVIDER_MODELS: Record<AIProviderName, { text: string[]; image: string[]; video: string[]; audio: string[] }> = {
   openai: {
     text: ['gpt-4o', 'gpt-4o-mini', 'o3', 'o4-mini', 'gpt-5.3-codex', 'gpt-5.2-codex'],
     image: ['dall-e-3', 'dall-e-2'],
-    video: []
+    video: [],
+    audio: []
   },
   anthropic: {
     text: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-3-5-haiku-20241022'],
     image: [],
-    video: []
+    video: [],
+    audio: []
   },
   google: {
     text: ['gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'],
@@ -239,17 +266,20 @@ export const PROVIDER_MODELS: Record<AIProviderName, { text: string[]; image: st
       'nano-banana-pro-preview',
       'nano-banana-preview'
     ],
-    video: ['veo-3.0-generate-preview', 'veo-2']
+    video: ['veo-3.0-generate-preview', 'veo-2'],
+    audio: ['lyria-realtime-exp']
   },
   groq: {
     text: ['llama-3.3-70b-versatile', 'llama-4-scout-17b-16e-instruct', 'llama-3.1-8b-instant', 'gemma2-9b-it'],
     image: [],
-    video: []
+    video: [],
+    audio: []
   },
   ollama: {
     text: ['llama3.3', 'llama3.2', 'qwen2.5', 'mistral', 'mixtral'],
     image: ['stable-diffusion'],
-    video: []
+    video: [],
+    audio: []
   }
 }
 
@@ -333,6 +363,8 @@ export interface Post {
   slides?: CarouselSlide[]
   // Briefing criativo para regeneracao de imagens em diferentes proporcoes
   creativeBriefing?: CreativeBriefing
+  // Trilha sonora gerada
+  generatedAudio?: AIAudioResult
   // Campos de uso de IA (ultima geracao) - mantidos para compatibilidade
   lastUsagePromptTokens?: number
   lastUsageCompletionTokens?: number
@@ -353,6 +385,7 @@ export interface Post {
   currentVersionId?: number
   // Campos de controle de geracao de IA em andamento
   aiState?: 'idle' | 'loading' | 'error'
+  musicAiState?: 'idle' | 'loading' | 'completed' | 'error'
   activeLogId?: number
   scheduledAt?: string
   publishedAt?: string
@@ -580,6 +613,28 @@ export interface AIUsageInfo {
   agentBreakdown?: AgentCost[]
 }
 
+// Resultado de audio gerado
+export interface AIAudioResult {
+  url: string
+  format: string
+  durationSeconds: number
+  prompt: string
+}
+
+// Opcoes para geracao de musica
+export interface MusicGenerationOptions {
+  genre?: string
+  mood?: string
+  tempo?: number
+  customPrompt?: string
+  // Contexto do post para geracao contextualizada
+  postContent?: string // Texto do post
+  briefing?: CreativeBriefing // Briefing criativo gerado
+  slideTexts?: string[] // Textos dos slides do carousel
+  slideDescriptions?: string[] // Descricoes das imagens dos slides
+  postId?: number // ID do post atual
+}
+
 // Resultado de geracao de IA
 export interface AIGenerateResult {
   content: string
@@ -592,5 +647,7 @@ export interface AIGenerateResult {
   briefing?: CreativeBriefing
   postId?: number
   logId?: number
+  // Campos para geracao de musica
+  audio?: AIAudioResult
 }
 

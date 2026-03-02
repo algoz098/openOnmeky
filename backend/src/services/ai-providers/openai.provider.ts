@@ -29,6 +29,7 @@ export class OpenAIProvider extends BaseAIProvider {
     text: true,
     image: true,
     video: false,
+    audio: false,
     embeddings: true,
     models: ['gpt-4o', 'gpt-4o-mini', 'gpt-5-pro', 'gpt-5', 'dall-e-3', 'dall-e-2']
   }
@@ -145,10 +146,10 @@ export class OpenAIProvider extends BaseAIProvider {
         provider: this.name,
         usage: response.usage
           ? {
-              promptTokens: response.usage.prompt_tokens,
-              completionTokens: response.usage.completion_tokens,
-              totalTokens: response.usage.total_tokens
-            }
+            promptTokens: response.usage.prompt_tokens,
+            completionTokens: response.usage.completion_tokens,
+            totalTokens: response.usage.total_tokens
+          }
           : undefined,
         finishReason: choice?.finish_reason || undefined
       }
@@ -198,10 +199,10 @@ export class OpenAIProvider extends BaseAIProvider {
         provider: this.name,
         usage: response.usage
           ? {
-              promptTokens: response.usage.input_tokens,
-              completionTokens: response.usage.output_tokens,
-              totalTokens: response.usage.input_tokens + response.usage.output_tokens
-            }
+            promptTokens: response.usage.input_tokens,
+            completionTokens: response.usage.output_tokens,
+            totalTokens: response.usage.input_tokens + response.usage.output_tokens
+          }
           : undefined,
         finishReason: response.status
       }
@@ -276,13 +277,13 @@ export class OpenAIProvider extends BaseAIProvider {
       const message = error.message || 'Erro ao comunicar com OpenAI'
 
       if (error.status === 401) {
-        return new Error('Servico de IA indisponivel. Verifique a configuracao.')
+        return new Error(`Servico de IA indisponivel. Verifique a configuracao. (${message})`)
       }
       if (error.status === 429) {
-        return new Error('Limite de requisicoes excedido. Tente novamente mais tarde.')
+        return new Error(`Limite de requisicoes excedido. Tente novamente mais tarde. (${message})`)
       }
       if (error.status && error.status >= 500) {
-        return new Error('Servico de IA indisponivel. Tente novamente mais tarde.')
+        return new Error(`Servico de IA indisponivel. Tente novamente mais tarde. (${message})`)
       }
 
       return new Error(message)

@@ -1,9 +1,9 @@
 import { ref, type Ref } from 'vue'
 import { api, feathersClient } from 'src/api'
-import type { AIGenerateResult, AIImage, CarouselSlide } from 'src/types'
+import type { AIGenerateResult, AIImage, CarouselSlide, MusicGenerationOptions } from 'src/types'
 
 // Tipos de operacao suportados pelo backend
-type AIOperationType = 'generate' | 'rewrite' | 'adapt' | 'suggest-hashtags' | 'carousel'
+type AIOperationType = 'generate' | 'rewrite' | 'adapt' | 'suggest-hashtags' | 'carousel' | 'music-generation'
 
 // Plataformas de redes sociais suportadas pelo backend
 type SocialPlatform = 'twitter' | 'instagram' | 'linkedin' | 'threads' | 'facebook' | 'tiktok'
@@ -67,6 +67,8 @@ interface AIServiceData {
   targetAspectRatio?: AspectRatio
   // ID do post existente para atualizar (ao inves de criar novo)
   postId?: number
+  // Opcoes para geracao de musica
+  musicOptions?: MusicGenerationOptions
 }
 
 export function useAI() {
@@ -318,6 +320,36 @@ export function useAI() {
     }
   }
 
+  // Gerar trilha sonora usando Lyria (Google)
+  const generateMusic = async (
+    brandId: number,
+    options?: MusicGenerationOptions,
+    platform?: string
+  ): Promise<AIGenerateResult | null> => {
+    loading.value = true
+    error.value = null
+    try {
+      const data: AIServiceData = {
+        brandId,
+        type: 'music-generation',
+        prompt: options?.customPrompt || 'Instrumental music for social media'
+      }
+      if (options) {
+        data.musicOptions = options
+      }
+      if (platform) data.platform = platform as SocialPlatform
+      if (options?.postId) data.postId = options.postId
+
+      const result = await aiService.create(data)
+      return result as AIGenerateResult
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Erro ao gerar musica'
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     loading,
     error,
@@ -327,6 +359,7 @@ export function useAI() {
     rewrite,
     suggestHashtags,
     generateCarousel,
+    generateMusic,
     clearProgress,
     getProviders,
     regenerateSlideImage,

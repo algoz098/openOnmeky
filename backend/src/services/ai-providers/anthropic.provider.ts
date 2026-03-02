@@ -22,6 +22,7 @@ export class AnthropicProvider extends BaseAIProvider {
     text: true,
     image: false,
     video: false,
+    audio: false,
     embeddings: false,
     models: [
       'claude-sonnet-4-20250514',
@@ -99,9 +100,9 @@ export class AnthropicProvider extends BaseAIProvider {
   ):
     | string
     | Array<
-        | { type: 'text'; text: string }
-        | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
-      > {
+      | { type: 'text'; text: string }
+      | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+    > {
     if (typeof content === 'string') {
       return content
     }
@@ -145,11 +146,11 @@ export class AnthropicProvider extends BaseAIProvider {
     const messages: Array<{
       role: 'user' | 'assistant'
       content:
-        | string
-        | Array<
-            | { type: 'text'; text: string }
-            | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
-          >
+      | string
+      | Array<
+        | { type: 'text'; text: string }
+        | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+      >
     }> = []
 
     for (const msg of options.messages) {
@@ -181,6 +182,7 @@ export class AnthropicProvider extends BaseAIProvider {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
+      console.error('[AnthropicProvider] Erro ao gerar texto:', JSON.stringify(error, null, 2))
       throw this.handleError(error, response.status)
     }
 
@@ -193,10 +195,10 @@ export class AnthropicProvider extends BaseAIProvider {
       provider: this.name,
       usage: data.usage
         ? {
-            promptTokens: data.usage.input_tokens || 0,
-            completionTokens: data.usage.output_tokens || 0,
-            totalTokens: (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0)
-          }
+          promptTokens: data.usage.input_tokens || 0,
+          completionTokens: data.usage.output_tokens || 0,
+          totalTokens: (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0)
+        }
         : undefined,
       finishReason: data.stop_reason
     }
@@ -214,13 +216,13 @@ export class AnthropicProvider extends BaseAIProvider {
     const message = error?.error?.message || 'Erro ao comunicar com Anthropic'
 
     if (status === 401) {
-      return new Error('Servico de IA indisponivel. Verifique a configuracao.')
+      return new Error(`Servico de IA indisponivel. Verifique a configuracao. (${message})`)
     }
     if (status === 429) {
-      return new Error('Limite de requisicoes excedido. Tente novamente mais tarde.')
+      return new Error(`Limite de requisicoes excedido. Tente novamente mais tarde. (${message})`)
     }
     if (status >= 500) {
-      return new Error('Servico de IA indisponivel. Tente novamente mais tarde.')
+      return new Error(`Servico de IA indisponivel. Tente novamente mais tarde. (${message})`)
     }
 
     return new Error(message)

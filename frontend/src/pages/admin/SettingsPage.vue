@@ -78,6 +78,30 @@
                     />
                   </div>
 
+                  <!-- Campos especificos para Google Cloud (Vertex AI / Lyria) -->
+                  <div v-if="provider.name === 'google'" class="col-12 col-md-6">
+                    <q-input
+                      v-model="settings[provider.name].projectId"
+                      label="Google Cloud Project ID"
+                      hint="Necessario para Lyria (geracao de musica)"
+                      outlined
+                      dense
+                      :disable="!settings[provider.name].enabled"
+                    />
+                  </div>
+
+                  <div v-if="provider.name === 'google'" class="col-12 col-md-6">
+                    <q-input
+                      v-model="settings[provider.name].location"
+                      label="Vertex AI Location"
+                      placeholder="us-central1"
+                      hint="Regiao do Vertex AI (padrao: us-central1)"
+                      outlined
+                      dense
+                      :disable="!settings[provider.name].enabled"
+                    />
+                  </div>
+
                   <div class="col-12">
                     <q-btn
                       color="primary"
@@ -254,7 +278,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { useFeathers } from 'src/composables/use-feathers'
+import { feathersClient } from 'src/api'
 
 type ProviderName = 'openai' | 'google' | 'ollama' | 'anthropic' | 'groq'
 
@@ -263,6 +287,9 @@ interface ProviderConfig {
   apiKey?: string
   baseUrl?: string
   organizationId?: string
+  // Campos especificos para Google Cloud (Vertex AI / Lyria)
+  projectId?: string
+  location?: string
 }
 
 interface ProviderInfo {
@@ -275,7 +302,6 @@ interface ProviderInfo {
 }
 
 const $q = useQuasar()
-const { api } = useFeathers()
 
 const loading = ref(true)
 const defaultProvider = ref<ProviderName | null>(null)
@@ -288,7 +314,7 @@ const saving = reactive<Record<ProviderName, boolean>>({
 
 const settings = reactive<Record<ProviderName, ProviderConfig>>({
   openai: { enabled: false },
-  google: { enabled: false },
+  google: { enabled: false, projectId: '', location: '' },
   ollama: { enabled: true, baseUrl: 'http://localhost:11434' },
   anthropic: { enabled: false },
   groq: { enabled: false }
@@ -322,8 +348,8 @@ const getProviderCaption = (name: ProviderName) => {
 
 const fetchSettings = async () => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (api.service('settings') as any).find()
+    // Usar feathersClient diretamente para services sem cache
+    const result = await feathersClient.service('settings').find()
     if (result?.ai) {
       for (const provider of providers) {
         if (result.ai[provider.name]) {
@@ -344,8 +370,8 @@ const fetchSettings = async () => {
 const saveProvider = async (name: ProviderName) => {
   saving[name] = true
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (api.service('settings/ai') as any).patch(name, settings[name])
+    // Usar feathersClient diretamente (sem Pinia) para services que nao precisam de cache
+    await feathersClient.service('settings/ai').patch(name, settings[name])
     $q.notify({ type: 'positive', message: `${name} salvo com sucesso` })
   } catch {
     $q.notify({ type: 'negative', message: `Erro ao salvar ${name}` })
@@ -356,8 +382,8 @@ const saveProvider = async (name: ProviderName) => {
 
 const setDefaultProvider = async (provider: ProviderName) => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (api.service('settings/ai/default') as any).create({ provider })
+    // Usar feathersClient diretamente (sem Pinia) para services que nao precisam de cache
+    await feathersClient.service('settings/ai/default').create({ provider })
     $q.notify({ type: 'positive', message: 'Provider padrao atualizado' })
   } catch {
     $q.notify({ type: 'negative', message: 'Erro ao definir provider padrao' })
@@ -367,8 +393,8 @@ const setDefaultProvider = async (provider: ProviderName) => {
 const saveGlobalSettings = async () => {
   savingGlobal.value = true
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (api.service('settings/ai/global') as any).patch(null, globalSettings)
+    // Usar feathersClient diretamente (sem Pinia) para services que nao precisam de cache
+    await feathersClient.service('settings/ai/global').patch(null, globalSettings)
     $q.notify({ type: 'positive', message: 'Configuracoes globais salvas com sucesso' })
   } catch {
     $q.notify({ type: 'negative', message: 'Erro ao salvar configuracoes globais' })
@@ -412,8 +438,8 @@ const getPricingCaption = (name: ProviderName) => {
 
 const fetchPricing = async () => {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (api.service('settings/ai/pricing') as any).find()
+    // Usar feathersClient diretamente (sem Pinia) para services que nao precisam de cache
+    const result = await feathersClient.service('settings/ai/pricing').find()
     if (result) {
       pricing.currency = result.currency || 'USD'
       pricing.lastUpdated = result.lastUpdated
@@ -429,8 +455,13 @@ const fetchPricing = async () => {
 const savePricing = async (provider: ProviderName) => {
   savingPricing[provider] = true
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (api.service('settings/ai/pricing') as any).patch(provider, pricing.models[provider])
+    const providerPricing = pricing.models[provider]
+    if (!providerPricing) {
+      $q.notify({ type: 'warning', message: `Nenhum preco configurado para ${provider}` })
+      return
+    }
+    // Usar feathersClient diretamente (sem Pinia) para services que nao precisam de cache
+    await feathersClient.service('settings/ai/pricing').patch(provider, providerPricing)
     $q.notify({ type: 'positive', message: `Precos de ${provider} salvos` })
   } catch {
     $q.notify({ type: 'negative', message: `Erro ao salvar precos de ${provider}` })
@@ -442,11 +473,12 @@ const savePricing = async (provider: ProviderName) => {
 const resetPricing = async () => {
   resettingPricing.value = true
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (api.service('settings/ai/pricing') as any).create({ action: 'reset' })
-    pricing.models = result.models || {}
+    // Usar feathersClient diretamente (sem Pinia) para services que nao precisam de cache
+    const result = await feathersClient.service('settings/ai/pricing').create({ action: 'reset' })
+    pricing.models = result?.models || {}
     $q.notify({ type: 'positive', message: 'Precos restaurados para padrao' })
-  } catch {
+  } catch (err) {
+    console.error('Erro ao restaurar precos:', err)
     $q.notify({ type: 'negative', message: 'Erro ao restaurar precos' })
   } finally {
     resettingPricing.value = false

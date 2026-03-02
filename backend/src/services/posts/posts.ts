@@ -26,7 +26,7 @@ export * from './posts.schema'
 
 // Campos JSON que precisam ser serializados/deserializados
 const JSON_ARRAY_FIELDS = ['warnings', 'mediaUrls', 'slides', 'aiReferenceImages', 'aiExecutions']
-const JSON_OBJECT_FIELDS = ['creativeBriefing', 'lastUsageCostBreakdown']
+const JSON_OBJECT_FIELDS = ['creativeBriefing', 'lastUsageCostBreakdown', 'generatedAudio']
 const JSON_STRING_FIELDS = ['aiPrompt', 'aiContext', 'content']
 
 // Hook para sanitizar dados antes da validacao (converter null para valores apropriados)
@@ -500,25 +500,25 @@ const loadNormalizedDataAndDeserialize = async (context: HookContext) => {
             versions: Object.keys(versionsObj).length > 0 ? versionsObj : undefined,
             typography: typography
               ? {
-                  text: typography.text,
-                  fontStyle: typography.fontStyle,
-                  fontFamily: typography.fontFamily,
-                  position: typography.position,
-                  size: typography.size,
-                  color: typography.color,
-                  backgroundColor: typography.backgroundColor,
-                  backgroundStyle: typography.backgroundStyle,
-                  alignment: typography.alignment,
-                  shadow: Boolean(typography.shadow),
-                  outline: Boolean(typography.outline)
-                }
+                text: typography.text,
+                fontStyle: typography.fontStyle,
+                fontFamily: typography.fontFamily,
+                position: typography.position,
+                size: typography.size,
+                color: typography.color,
+                backgroundColor: typography.backgroundColor,
+                backgroundStyle: typography.backgroundStyle,
+                alignment: typography.alignment,
+                shadow: Boolean(typography.shadow),
+                outline: Boolean(typography.outline)
+              }
               : undefined,
             generationMetadata: metadata
               ? {
-                  provider: metadata.provider,
-                  model: metadata.model,
-                  generatedAt: metadata.generatedAt
-                }
+                provider: metadata.provider,
+                model: metadata.model,
+                generatedAt: metadata.generatedAt
+              }
               : undefined
           }
         })
@@ -574,15 +574,15 @@ const loadNormalizedDataAndDeserialize = async (context: HookContext) => {
             agentBreakdown:
               agentBreakdown.length > 0
                 ? agentBreakdown.map((a: Record<string, unknown>) => ({
-                    agentType: a.agentType,
-                    provider: a.provider,
-                    model: a.model,
-                    promptTokens: a.promptTokens,
-                    completionTokens: a.completionTokens,
-                    totalTokens: a.totalTokens,
-                    costUsd: a.costUsd,
-                    imagesGenerated: a.imagesGenerated
-                  }))
+                  agentType: a.agentType,
+                  provider: a.provider,
+                  model: a.model,
+                  promptTokens: a.promptTokens,
+                  completionTokens: a.completionTokens,
+                  totalTokens: a.totalTokens,
+                  costUsd: a.costUsd,
+                  imagesGenerated: a.imagesGenerated
+                }))
                 : undefined
           }
         })
@@ -603,6 +603,10 @@ const loadNormalizedDataAndDeserialize = async (context: HookContext) => {
 
     if (post.lastUsageCostBreakdown) {
       post.lastUsageCostBreakdown = safeJsonParse(post.lastUsageCostBreakdown, null)
+    }
+
+    if (post.generatedAudio) {
+      post.generatedAudio = safeJsonParse(post.generatedAudio, null)
     }
 
     return post

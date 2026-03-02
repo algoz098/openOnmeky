@@ -1,5 +1,6 @@
 // Provider Google AI para integracao com Gemini
 
+import { GoogleGenAI, LiveMusicGenerationConfig } from '@google/genai'
 import {
   BaseAIProvider,
   AIProviderCapabilities,
@@ -8,6 +9,8 @@ import {
   GenerateTextResult,
   GenerateImageOptions,
   GenerateImageResult,
+  GenerateAudioOptions,
+  GenerateAudioResult,
   AIModelInfo,
   AIMessage,
   AIMessageContent
@@ -16,6 +19,10 @@ import {
 export interface GoogleAIConfig extends AIProviderConfig {
   apiKey: string
   baseUrl?: string
+  /** Project ID do Google Cloud (necessario para Lyria/Vertex AI) */
+  projectId?: string
+  /** Localizacao do Vertex AI (padrao: us-central1) */
+  location?: string
 }
 
 export class GoogleAIProvider extends BaseAIProvider {
@@ -24,8 +31,9 @@ export class GoogleAIProvider extends BaseAIProvider {
     text: true,
     image: true,
     video: false,
+    audio: true,
     embeddings: true,
-    models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro']
+    models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro', 'lyria-realtime-exp']
   }
 
   private baseUrl: string
@@ -95,12 +103,14 @@ export class GoogleAIProvider extends BaseAIProvider {
           supportedMethods.includes('predictLongRunning')
         ) {
           type = 'video'
+        } else if (idLower.includes('lyria') || idLower.includes('music')) {
+          type = 'audio'
         } else if (idLower.includes('embedding') || supportedMethods.includes('embedContent')) {
           type = 'embedding'
         }
 
         // Filtrar modelos de texto apenas se suportam generateContent
-        // Modelos de imagem e video podem ter outros metodos
+        // Modelos de imagem, video e audio podem ter outros metodos
         if (type === 'text' && !supportedMethods.includes('generateContent')) {
           continue
         }
@@ -113,6 +123,13 @@ export class GoogleAIProvider extends BaseAIProvider {
           maxOutputTokens: model.outputTokenLimit
         })
       }
+
+      // Adicionar modelo Lyria RealTime manualmente (nao aparece na lista de modelos do Gemini API)
+      models.push({
+        id: 'lyria-realtime-exp',
+        name: 'Lyria RealTime (Music Generation)',
+        type: 'audio'
+      })
 
       // Ordenar por relevancia
       models.sort((a, b) => {
@@ -147,12 +164,14 @@ export class GoogleAIProvider extends BaseAIProvider {
             topP: options.topP,
             stopSequences: options.stopSequences
           }
-        })
+        }),
+        signal: AbortSignal.timeout(90000) // 90s timeout to avoid 5-minute hangs
       }
     )
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
+      console.error('[GoogleAIProvider] Erro ao gerar texto:', JSON.stringify(error, null, 2))
       throw this.handleError(error, response.status)
     }
 
@@ -166,10 +185,10 @@ export class GoogleAIProvider extends BaseAIProvider {
       provider: this.name,
       usage: data.usageMetadata
         ? {
-            promptTokens: data.usageMetadata.promptTokenCount || 0,
-            completionTokens: data.usageMetadata.candidatesTokenCount || 0,
-            totalTokens: data.usageMetadata.totalTokenCount || 0
-          }
+          promptTokens: data.usageMetadata.promptTokenCount || 0,
+          completionTokens: data.usageMetadata.candidatesTokenCount || 0,
+          totalTokens: data.usageMetadata.totalTokenCount || 0
+        }
         : undefined,
       finishReason: candidate?.finishReason
     }
@@ -243,7 +262,8 @@ export class GoogleAIProvider extends BaseAIProvider {
         generationConfig: {
           responseModalities: ['TEXT', 'IMAGE']
         }
-      })
+      }),
+      signal: AbortSignal.timeout(120000) // 120s timeout for image generation
     })
 
     console.log('[GoogleAIProvider] Response status:', response.status, response.statusText)
@@ -301,7 +321,8 @@ export class GoogleAIProvider extends BaseAIProvider {
         parameters: {
           sampleCount: options.n || 1
         }
-      })
+      }),
+      signal: AbortSignal.timeout(120000) // 120s timeout for image generation
     })
 
     console.log('[GoogleAIProvider] Response status:', response.status, response.statusText)
@@ -443,15 +464,231 @@ export class GoogleAIProvider extends BaseAIProvider {
     const message = error?.error?.message || 'Erro ao comunicar com Google AI'
 
     if (status === 401 || status === 403) {
-      return new Error('Servico de IA indisponivel. Verifique a configuracao.')
+      return new Error(`Servico de IA indisponivel. Verifique a configuracao. (${message})`)
     }
     if (status === 429) {
-      return new Error('Limite de requisicoes excedido. Tente novamente mais tarde.')
+      return new Error(`Limite de requisicoes excedido. Tente novamente mais tarde. (${message})`)
     }
     if (status >= 500) {
-      return new Error('Servico de IA indisponivel. Tente novamente mais tarde.')
+      return new Error(`Servico de IA indisponivel. Tente novamente mais tarde. (${message})`)
     }
 
     return new Error(message)
+  }
+
+  /**
+   * Gera audio/musica instrumental usando Lyria RealTime via Gemini API SDK
+   * Usa WebSocket para streaming e suporta API Key (sem necessidade de OAuth2)
+   */
+  async generateAudio(options: GenerateAudioOptions): Promise<GenerateAudioResult> {
+    const model = options.model || 'lyria-realtime-exp'
+
+    console.log('[GoogleAIProvider] generateAudio chamado')
+    console.log('[GoogleAIProvider] Modelo:', model)
+    console.log('[GoogleAIProvider] API Key presente:', !!this.config.apiKey)
+
+    // Construir prompts weighted
+    const prompts: Array<{ text: string; weight: number }> = []
+
+    // Prompt principal
+    let mainPrompt = options.prompt
+    if (options.genre) {
+      mainPrompt = `${options.genre}: ${mainPrompt}`
+    }
+    prompts.push({ text: mainPrompt, weight: 1.0 })
+
+    // Mood como prompt secundario
+    if (options.mood) {
+      prompts.push({ text: options.mood, weight: 0.7 })
+    }
+
+    console.log('[GoogleAIProvider] Prompts:', JSON.stringify(prompts))
+
+    // Configuracao de geracao
+    const musicConfig: LiveMusicGenerationConfig = {
+      temperature: 1.0
+    }
+
+    // BPM se especificado
+    if (options.tempo) {
+      musicConfig.bpm = options.tempo
+    }
+
+    // Duracao em chunks (cada chunk ~2 segundos, entao 15 chunks = ~30s)
+    const durationSeconds = options.duration || 30
+    const maxChunks = Math.ceil(durationSeconds / 2)
+
+    console.log('[GoogleAIProvider] Config:', JSON.stringify(musicConfig))
+    console.log('[GoogleAIProvider] Max chunks:', maxChunks)
+
+    // Inicializar SDK com API Key
+    const client = new GoogleGenAI({
+      apiKey: this.config.apiKey,
+      httpOptions: { apiVersion: 'v1alpha' }
+    })
+
+    // Coletar chunks de audio
+    const audioChunks: Buffer[] = []
+    let setupComplete = false
+    let sessionError: Error | null = null
+    let sessionClosed = false
+
+    try {
+      // Conectar via WebSocket ao Lyria RealTime
+      const session = await client.live.music.connect({
+        model: `models/${model}`,
+        callbacks: {
+          onmessage: message => {
+            // Verificar se setup foi completado
+            if (message.setupComplete) {
+              console.log('[GoogleAIProvider] Lyria setup complete')
+              setupComplete = true
+              return
+            }
+
+            // Verificar se ha prompt filtrado
+            if (message.filteredPrompt) {
+              console.warn('[GoogleAIProvider] Prompt filtrado:', message.filteredPrompt)
+              return
+            }
+
+            // Coletar chunks de audio
+            if (message.serverContent?.audioChunks) {
+              for (const chunk of message.serverContent.audioChunks) {
+                if (chunk.data) {
+                  const audioBuffer = Buffer.from(chunk.data, 'base64')
+                  audioChunks.push(audioBuffer)
+                  console.log(
+                    `[GoogleAIProvider] Chunk ${audioChunks.length} recebido: ${audioBuffer.length} bytes`
+                  )
+                }
+              }
+            }
+          },
+          onerror: error => {
+            console.error('[GoogleAIProvider] Lyria session error:', error)
+            sessionError = new Error(error?.message || 'Erro na sessao Lyria')
+          },
+          onclose: () => {
+            console.log('[GoogleAIProvider] Lyria session closed')
+            sessionClosed = true
+          }
+        }
+      })
+
+      // Aguardar setup complete
+      console.log('[GoogleAIProvider] Aguardando setup complete...')
+      const setupStartTime = Date.now()
+      while (!setupComplete && !sessionError && !sessionClosed && Date.now() - setupStartTime < 10000) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
+      if (sessionError) throw sessionError
+      if (!setupComplete) {
+        throw new Error('Timeout aguardando setup da sessao Lyria')
+      }
+
+      // Configurar prompts
+      console.log('[GoogleAIProvider] Configurando prompts...')
+      await session.setWeightedPrompts({
+        weightedPrompts: prompts.map(p => ({ text: p.text, weight: p.weight }))
+      })
+
+      // Configurar geracao (audio e sempre PCM16 48kHz stereo)
+      console.log('[GoogleAIProvider] Configurando geracao...')
+      await session.setMusicGenerationConfig({
+        musicGenerationConfig: musicConfig
+      })
+
+      // Iniciar geracao (play() e sincrono, nao retorna Promise)
+      console.log('[GoogleAIProvider] Iniciando geracao...')
+      session.play()
+
+      // Aguardar coleta de chunks por um tempo limitado
+      const startTime = Date.now()
+      const timeoutMs = (durationSeconds + 15) * 1000 // Duracao + 15s de buffer
+
+      console.log(`[GoogleAIProvider] Aguardando ${maxChunks} chunks por ate ${timeoutMs / 1000}s...`)
+
+      while (
+        audioChunks.length < maxChunks &&
+        Date.now() - startTime < timeoutMs &&
+        !sessionError &&
+        !sessionClosed
+      ) {
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+
+      if (sessionError) throw sessionError
+
+      // Parar geracao
+      console.log('[GoogleAIProvider] Parando geracao...')
+      session.stop()
+
+      // Aguardar um pouco para chunks finais
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      console.log('[GoogleAIProvider] Audio chunks coletados:', audioChunks.length)
+
+      if (audioChunks.length === 0) {
+        throw new Error('Nenhum audio foi gerado pelo modelo Lyria')
+      }
+
+      // Combinar chunks em um buffer
+      const combinedAudio = Buffer.concat(audioChunks)
+
+      // Criar header WAV para PCM16 48kHz stereo
+      const wavHeader = this.createWavHeader(combinedAudio.length, 48000, 2, 16)
+      const wavBuffer = Buffer.concat([wavHeader, combinedAudio])
+
+      return {
+        audioBase64: wavBuffer.toString('base64'),
+        format: 'wav',
+        durationSeconds: Math.floor(combinedAudio.length / (48000 * 2 * 2)), // bytes / (sampleRate * channels * bytesPerSample)
+        model,
+        provider: this.name
+      }
+    } catch (error) {
+      console.error('[GoogleAIProvider] Erro ao gerar audio:', error)
+      if (error instanceof Error) {
+        throw new Error(`Erro ao gerar musica com Lyria: ${error.message}`)
+      }
+      throw new Error('Erro desconhecido ao gerar musica')
+    }
+  }
+
+  /**
+   * Cria header WAV para dados PCM
+   */
+  private createWavHeader(
+    dataLength: number,
+    sampleRate: number,
+    numChannels: number,
+    bitsPerSample: number
+  ): Buffer {
+    const byteRate = (sampleRate * numChannels * bitsPerSample) / 8
+    const blockAlign = (numChannels * bitsPerSample) / 8
+    const buffer = Buffer.alloc(44)
+
+    // RIFF header
+    buffer.write('RIFF', 0)
+    buffer.writeUInt32LE(36 + dataLength, 4) // file size - 8
+    buffer.write('WAVE', 8)
+
+    // fmt chunk
+    buffer.write('fmt ', 12)
+    buffer.writeUInt32LE(16, 16) // fmt chunk size
+    buffer.writeUInt16LE(1, 20) // audio format (1 = PCM)
+    buffer.writeUInt16LE(numChannels, 22)
+    buffer.writeUInt32LE(sampleRate, 24)
+    buffer.writeUInt32LE(byteRate, 28)
+    buffer.writeUInt16LE(blockAlign, 32)
+    buffer.writeUInt16LE(bitsPerSample, 34)
+
+    // data chunk
+    buffer.write('data', 36)
+    buffer.writeUInt32LE(dataLength, 40)
+
+    return buffer
   }
 }
